@@ -10,7 +10,7 @@ afterAll(async () => {
 
 // Crear una sesión
 // POST /api/grupos/:Grupo_id/sesiones
-describe("Crear una sesión", () => {
+describe.skip("Crear una sesión", () => {
     const reqHeader = {
         Authorization: config.Javi.token,
     }

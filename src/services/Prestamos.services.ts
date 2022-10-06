@@ -2,7 +2,7 @@ import { OkPacket } from "mysql2";
 import { Connection, Pool, PoolConnection } from "mysql2/promise";
 import db from "../config/database";
 import { existeGrupo } from "./Grupos.services";
-import { obtenerSesionActual, obtener_sesion } from "./Sesiones.services";
+import { obtener_sesion } from "./Sesiones.services";
 import { existeSocio } from "./Socios.services";
 import { crear_transaccion } from "./Transacciones.services";
 
@@ -80,7 +80,7 @@ export const obtener_prestamos_ampliables = async (Grupo_id: number, Socio_id: n
  * @returns Array de objetos de tipo Prestamo.
  * @throws Error si no existe el socio o el grupo.
  */
-export const obtenerPrestamosVigentes = async (Grupo_id: number, Socio_id: number): Promise<Prestamo[]> => {
+export const obtener_prestamos_pagables = async (Grupo_id: number, Socio_id: number): Promise<Prestamo[]> => {
     const socio = await existeSocio(Socio_id);
     const grupo = await existeGrupo(Grupo_id);
 
@@ -89,6 +89,7 @@ export const obtenerPrestamosVigentes = async (Grupo_id: number, Socio_id: numbe
     FROM prestamos
     JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
     JOIN grupos ON grupos.Grupo_id = sesiones.Grupo_id
+    JOIN acuerdos ON acuerdos.Grupo_id = grupos.Grupo_id and acuerdos.\`Status\` = 1
     WHERE prestamos.Estatus_prestamo = 0 -- Que no estén pagados ya
         AND grupos.Grupo_id = ? -- De cierto grupo
         AND prestamos.Socio_id = ? -- De cierto socio
@@ -107,8 +108,7 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
     if (con === undefined) con = db;
 
     const prestamo = await existe_prestamo(Prestamo_id) as Prestamo;
-    const sesionPrestamo = await obtener_sesion(prestamo.Sesion_id);
-    const sesionActual = await obtenerSesionActual(sesionPrestamo?.Grupo_id!);
+    const sesion = await obtener_sesion(prestamo.Sesion_id);
     const deudaInteres = prestamo.Interes_generado - prestamo.Interes_pagado;
     const deudaPrestamo = prestamo.Monto_prestamo - prestamo.Monto_pagado;
 
@@ -125,7 +125,7 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
         Cantidad_movimiento: Monto_abono_prestamo + Monto_abono_interes,
         Socio_id: prestamo.Socio_id,
         Catalogo_id: "ABONO_PRESTAMO",
-        Grupo_id: sesionPrestamo?.Grupo_id!,
+        Grupo_id: sesion?.Grupo_id,
     }, con);
 
     // Crear registro en Transaccion_prestamos
@@ -143,8 +143,4 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
 
     query = "Update prestamos SET Interes_pagado = ?, Monto_pagado = ?, Estatus_prestamo = ? WHERE Prestamo_id = ?";
     await con.query(query, [prestamo.Interes_pagado, prestamo.Monto_pagado, prestamo.Estatus_prestamo, Prestamo_id]);
-
-    // Agregar ganancia a la sesion
-    query = "Update sesiones SET Ganancias = Ganancias + ? WHERE Sesion_id = ?";
-    const result = await con.query(query, [Monto_abono_interes, sesionActual.Sesion_id]) as [OkPacket, any];
 }

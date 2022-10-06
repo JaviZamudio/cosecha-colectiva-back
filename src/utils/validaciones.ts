@@ -118,7 +118,7 @@ export const obtener_acuerdo_actual = async ( Grupo_id: number) => {
 }
 
 export function aplanar_respuesta(respuesta: string) {
-    return respuesta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f ]/g, "");
+    return respuesta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 export const actualizar_password = async (Socio_id, Password) => {
@@ -248,59 +248,6 @@ export const obtener_acuerdos_activos = async ( Grupo_id: number) => {
 
     if (acuerdos.length > 0) {
         return acuerdos[0];
-    }
-
-    throw "No hay acuerdos activos para el grupo" + Grupo_id;
-}
-
-export const registrar_asistencias = async (/** @type {Number} */ Grupo_id, /** @type {array} */ Socios) => {
-    //comprobar que haya Sesion_id y Socios
-    if (campos_incompletos({ Grupo_id, Socios })) {
-        // return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
-    }
-
-    try {
-        // VERIFICACIONES
-        // Verificar que la sesion existe
-        const sesion = await obtener_sesion_activa(Grupo_id);
-
-        // verificar que la sesion no tenga asistencias ya
-        let query = "select * from asistencias where Sesion_id = ?";
-        const asistencias_grupo = ((await db.query(query, sesion.Sesion_id))[0]) as Asistencia[];
-
-        if(asistencias_grupo.length > 0){
-            throw "Ya hay asistencias registradas para el grupo " + Grupo_id;
-        }
-
-        //registrar asistencias
-        const asistencias_con_error: {Socio_id: number, error: string}[] = [];
-        for (let i = 0; i < Socios.length; i++) {
-            try {
-                // Verificar que el socio existe
-                const socio = await existe_socio(Socios[i].Socio_id);
-                // Verificar que el socio pertenezca al grupo
-                await socio_en_grupo(socio.Socio_id, Grupo_id);
-
-                // INSERCION
-                let query = "INSERT INTO asistencias (Presente, Sesion_id, Socio_id) VALUES (?, ?, ?)";
-                await db.query(query, [Socios[i].Presente, sesion.Sesion_id, Socios[i].Socio_id]);
-            } catch (error) {
-                const { message } = catch_common_error(error)
-                asistencias_con_error.push({
-                    Socio_id: Socios[i].Socio_id,
-                    error: message
-                });
-            }
-        }
-
-        if (asistencias_con_error.length > 0) {
-            // return res.json({ code: 400, message: 'Asistencias con error', data: asistencias_con_error }).status(400);
-        }
-
-        // return res.json({ code: 200, message: 'Asistencias registradas' }).status(200);
-    } catch (error) {
-        const { code, message } = catch_common_error(error);
-        // return res.json({ code, message }).status(code);
     }
 
     throw "No hay acuerdos activos para el grupo" + Grupo_id;
