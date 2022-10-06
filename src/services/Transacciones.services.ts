@@ -1,4 +1,4 @@
-import { Connection, OkPacket, Pool } from "mysql2/promise";
+import { Connection, OkPacket, Pool, PoolConnection } from "mysql2/promise";
 import db from "../config/database";
 import { obtenerAcuerdoActual } from "./Acuerdos.services";
 import { obtenerSesionActual, obtener_caja_sesion } from "./Sesiones.services";
@@ -9,23 +9,31 @@ import { obtenerSesionActual, obtener_caja_sesion } from "./Sesiones.services";
  * @param con Conexion para hacer queries, para transacciones.
  * @returns El objeto de transaccion resultante
  */
-export async function crear_transaccion({Cantidad_movimiento, Catalogo_id, Socio_id, Grupo_id}, con?: Connection | Pool) {
+export async function crear_transaccion({Cantidad_movimiento, Catalogo_id, Socio_id, Grupo_id}: {Cantidad_movimiento: number, Catalogo_id: string, Socio_id: number, Grupo_id: number}, con?: PoolConnection | Pool) {
     // Hacer con = db si es que no es undefined
     if (con === undefined) {
         con = db;
     }
 
-    const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
-    const sesionActual = await obtenerSesionActual(Grupo_id);
+    const acuerdoActual = await obtenerAcuerdoActual(Grupo_id, con);
+    const sesionActual = await obtenerSesionActual(Grupo_id, con);
+    
+    if(sesionActual.Caja + Cantidad_movimiento < 0) {
+        throw "La caja no puede quedar menor a 0";
+    }
 
     const campos_transaccion: Transaccion = {
         Cantidad_movimiento,
         Catalogo_id,
         Socio_id,
         Acuerdo_id: acuerdoActual.Acuerdo_id!,
-        Caja: sesionActual.Caja + Cantidad_movimiento,
+        // Caja: sesionActual.Caja + Cantidad_movimiento // caja como numero
+        Caja: Number(sesionActual.Caja) + Number(Cantidad_movimiento), // caja como string
         Sesion_id: sesionActual.Sesion_id!,
     }
+
+
+    console.log({campos_transaccion});
 
     // Insertar Transaccion
     let query = "Insert into transacciones SET ?";
