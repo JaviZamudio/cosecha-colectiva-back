@@ -1,7 +1,4 @@
 import db from '../config/database';
-import { comprar_acciones } from '../services/Acciones.services';
-import { obtenerAcuerdoActual } from '../services/Acuerdos.services';
-import { obtenerSociosGrupo } from '../services/Grupos.services';
 import { AdminRequest } from '../types/misc';
 import { fechaActual, getCommonError } from '../utils/utils';
 import { campos_incompletos, existe_grupo, Fecha_actual, socio_en_grupo } from '../utils/validaciones';
@@ -51,14 +48,6 @@ export const crear_acuerdos = async (req: AdminRequest<Acuerdo>, res) => { //
             // comprobar que el administrador suplente es miembro del grupo
             await socio_en_grupo(campos_acuerdo.Id_socio_administrador_suplente, campos_acuerdo.Grupo_id);
 
-            // Si el grupo es nuevo (no tiene acuerdos anteriores) hay que asignar las acciones a cada socio
-            let esGrupoNuevo = false;
-            try {
-                await obtenerAcuerdoActual(id_grupo_actual!);
-            } catch (error) {
-                esGrupoNuevo = true;
-            }
-
             // Actualizar status del acuerdo anterior
             let query = "UPDATE acuerdos SET Status = 0 WHERE Grupo_id = ? and Status = 1";
             await con.query(query, [campos_acuerdo.Grupo_id]);
@@ -67,7 +56,7 @@ export const crear_acuerdos = async (req: AdminRequest<Acuerdo>, res) => { //
             query = "INSERT INTO acuerdos SET ?";
             await con.query(query, [campos_acuerdo]);
 
-            // Cambiar el socio de admin y suplente a normal
+            // Cambiar el socio de Creador, admin y suplente a normal
             query = "UPDATE grupo_socio SET Tipo_socio = 'SOCIO' WHERE Grupo_id = ? AND (Tipo_socio = 'ADMIN' or Tipo_socio = 'SUPLENTE')";
             await con.query(query, [campos_acuerdo.Grupo_id]);
 
@@ -79,20 +68,10 @@ export const crear_acuerdos = async (req: AdminRequest<Acuerdo>, res) => { //
             query = "UPDATE grupo_socio SET Tipo_socio = 'SUPLENTE' WHERE Grupo_id = ? AND Socio_id = ?";
             await con.query(query, [campos_acuerdo.Grupo_id, campos_acuerdo.Id_socio_administrador_suplente]);
 
-            // si es grupo nuevo, asignar las acciones
-            if (esGrupoNuevo) {
-                const socios_grupo = await obtenerSociosGrupo(id_grupo_actual!);
-
-                for (const grupoSocio of socios_grupo) {
-                    console.log("Asignando acciones a socio: " + grupoSocio.Socio_id);
-                    await comprar_acciones(grupoSocio.Socio_id, grupoSocio.Grupo_id, campos_acuerdo.Minimo_aportacion, con);
-                }
-            }
-
             // Hacer commit en la bd
             await con.commit();
 
-            return res.status(200).json({ code: 200, message: "Acuerdo registrado correctamente" });
+            return res.status(201).json({ code: 201, message: "Acuerdo registrado correctamente" });
         } catch (error) {
             await con.rollback();
             throw error;
@@ -128,7 +107,7 @@ export const crear_acuerdo_secundario = async (req: AdminRequest<AcuerdoSecundar
         let query = "INSERT INTO acuerdos_secundarios SET ?";
         await db.query(query, [campos_acuerdo_secundario]);
 
-        return res.status(200).json({ code: 200, message: "Acuerdo secundario registrado correctamente" });
+        return res.status(201).json({ code: 201, message: "Acuerdo secundario registrado correctamente" });
     } catch (error) {
         const { code, message } = getCommonError(error);
         return res.status(code).json({ code, message });

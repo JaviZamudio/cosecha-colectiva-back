@@ -45,9 +45,6 @@ describe.skip("Generar Nuevo Prestamo", () => {
             };
 
             const response = await request.post(`/api/grupos/${config.Grupo_prueba.id}/socios/${config.Javi.id}/prestamos`)
-                .send(reqBody)
-                .set(reqHeader);
-            expect(response.statusCode).toEqual(201);
         }, 5000);
     });
 });
@@ -58,7 +55,7 @@ describe("Pagar Prestamos", () => {
     const reqHeader = {
         Authorization: config.Javi.token,
     }
-
+    
     it("Debería devolver Status 200 si los prestamos se pagaron con exito", async () => {
         const prestamos = await obtener_prestamos_pagables(config.Grupo_prueba.id, config.Javi.id);
         const reqBody = {
