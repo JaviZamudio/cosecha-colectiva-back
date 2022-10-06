@@ -3,7 +3,9 @@ import { OkPacket, PoolConnection, RowDataPacket } from "mysql2";
 import { Connection, Pool } from "mysql2/promise";
 import db from "../config/database";
 import { aplanar_respuesta, existe_pregunta } from "../utils/validaciones";
+import { obtenerAcuerdoActual } from "./Acuerdos.services";
 import { existeGrupo, grupoVacio } from "./Grupos.services";
+import { obtenerPrestamosVigentes } from "./Prestamos.services";
 
 /**
  * Funcion para verificar si un socio es administrador de un grupo.
@@ -25,7 +27,7 @@ export const socio_es_admin = async (Socio_id: number, Grupo_id: number) => {
 
     // Si el socio no es administrador del grupo, lanzar error
     if (rows.length === 0) {
-        throw "El socio no es administrador del grupo";
+        throw {code: 403, message: "El socio no es administrador del grupo"};
     }
 
     return true;
@@ -210,6 +212,8 @@ export const crearPreguntaSocio = async (preguntaSocio: PreguntaSocio, con?: Con
 
     // aplanar la respuesta
     preguntaSocio.Respuesta = aplanar_respuesta(preguntaSocio.Respuesta);
+    // encriptar la respuesta
+    preguntaSocio.Respuesta = hashSync(preguntaSocio.Respuesta, 10);
 
     const query = "INSERT INTO preguntas_socios SET ?";
     const [result] = await con.query(query, [preguntaSocio]) as [OkPacket, any];
@@ -232,6 +236,8 @@ export const actualizaPreguntaSocio = async (preguntaSocio: PreguntaSocio, con?:
 
     // Aplanar la respuesta
     preguntaSocio.Respuesta = aplanar_respuesta(preguntaSocio.Respuesta);
+    // Encriptar la respuesta
+    preguntaSocio.Respuesta = hashSync(preguntaSocio.Respuesta, 10);
 
     const query = "UPDATE preguntas_socios SET ? WHERE Socio_id = ?";
     const [result] = await con.query(query, [preguntaSocio, preguntaSocio.Socio_id]) as [OkPacket, any];
@@ -255,4 +261,21 @@ export const actualizaPreguntaSocio = async (preguntaSocio: PreguntaSocio, con?:
     }
 
     return result[0] as GrupoSocio;
+}
+
+/**
+ * Funcion para obtener el limite de credito disponible para un socio
+ * @param Socio_id El id del socio
+ * @param Grupo_id El id del grupo
+ * @returns El limite de credito disponible
+ * @throws Si hay algun error
+ */
+export const obtenerLimiteCreditoDisponible = async (Socio_id: number, Grupo_id: number) => {
+    const grupoSocio = await socioEnGrupo(Socio_id, Grupo_id);
+    const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+    const prestamosVigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
+    const prestamosVigentesTotal = prestamosVigentes.reduce((total, prestamo) => total + (prestamo.Monto_prestamo), 0);
+    const limiteCreditoTotal = acuerdoActual.Limite_credito * grupoSocio.Acciones!;
+
+    return limiteCreditoTotal - prestamosVigentesTotal;
 }

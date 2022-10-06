@@ -62,7 +62,7 @@ export const crear_multa = async (req: AdminRequest<Multa>, res) => {
         const query = "INSERT INTO multas SET ?";
         await db.query(query, campos_multa);
 
-        return res.status(201).json({ code: 201, message: 'Multa creada' });
+        return res.status(200).json({ code: 200, message: 'Multa creada' });
     } catch (error) {
         console.log(error);
         const { message, code } = getCommonError(error)
@@ -123,6 +123,10 @@ export const pagar_multas = async (req: AdminRequest<{Multas: number[]}>, res) =
                 // Actualizar caja de la sesion
                 query = "UPDATE sesiones SET Caja = ? WHERE Sesion_id = ?";
                 await db.query(query, [campos_transaccion.Caja, campos_transaccion.Sesion_id]);
+
+                // Registrar ganancias
+                query = "update sesiones set Ganancias = Ganancias + ? where Sesion_id = ?";
+                await db.query(query, [multa.Monto_multa, sesion.Sesion_id]);
 
             } catch (error) { // cacha las multas con error
                 multas_con_error.push({

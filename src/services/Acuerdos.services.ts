@@ -1,3 +1,4 @@
+import { Pool, PoolConnection } from "mysql2/promise";
 import db from "../config/database";
 
 /**
@@ -5,9 +6,11 @@ import db from "../config/database";
  * @param Grupo_id Id del grupo en base al cual buscar el acuerdo.
  * @returns Objeto de tipo Acuerdo. THROWS COMMON ERROR
  */
-export const obtenerAcuerdoActual = async (Grupo_id: number) => {
+export const obtenerAcuerdoActual = async (Grupo_id: number, con?: PoolConnection | Pool) => {
+    if (con === undefined) con = db;
+
     let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
-    const acuerdo = (await db.query(query, [Grupo_id]))[0][0] as Acuerdo;
+    const acuerdo = (await con.query(query, [Grupo_id]))[0][0] as Acuerdo;
 
     if (acuerdo !== undefined) {
         return acuerdo;
