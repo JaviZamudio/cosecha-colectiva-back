@@ -118,7 +118,7 @@ export const obtener_acuerdo_actual = async ( Grupo_id: number) => {
 }
 
 export function aplanar_respuesta(respuesta: string) {
-    return respuesta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return respuesta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f ]/g, "");
 }
 
 export const actualizar_password = async (Socio_id, Password) => {
@@ -159,6 +159,38 @@ interface SociosPrestamo {
     message: string
     Limite_credito_disponible?: number
 }
+
+export const limite_credito = async (Socio_id: number, Grupo_id: number, prestamos: Prestamo[] | null, Acciones: number | null, Limite_credito: number | null ) => {
+    
+    if(prestamos === null){
+        let query = "SELECT * FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0;";
+        prestamos =  (await db.query(query, [Socio_id, Grupo_id]))[0] as Prestamo[];
+    }
+
+    if(Acciones === null){
+        let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? and Grupo_id = ?";
+        const [socio] = await db.query(query, [Socio_id, Grupo_id]) as [GrupoSocio[], any];
+        Acciones = socio[0].Acciones!;
+    }
+
+    if(Limite_credito === null){
+        let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
+        Limite_credito = {Limite_credito} = (((await db.query(query, [Grupo_id]))[0]))[0];
+    }
+
+    let total_prestamos = 0;
+    for (let i = 0; i < prestamos.length; i++) {
+        prestamos.forEach((prestamo) => {
+            total_prestamos = total_prestamos + prestamo.Monto_prestamo;
+        })
+        let puede_pedir = total_prestamos < (Acciones * Limite_credito!) ? 1 : 0;
+        let Limite_credito_disponible = (Acciones * Limite_credito!) - total_prestamos;
+        return([puede_pedir, Limite_credito_disponible]);
+    }
+}
+
+
+
 /**
  * Se encarga de filtrar que socios pueden pedir prestamos, 
  * por que razon no se podría, y si se puede, 
@@ -172,38 +204,41 @@ interface SociosPrestamo {
 export const prestamos_multiples = async (Grupo_id: number,  lista_socios: string | any[] | undefined) => {
     let lista_socios_prestamo: SociosPrestamo[] = []; //{{"Socio_id" : 1, "Nombres" : "Ale", "Apellidos" : "De Alvino", "puede_pedir" : 0, "message": "Ya tiene un prestamo vigente" }} ----> prestamo en 0 significa que no puede pedir prestamo, si esta en 1 es que si puede pedir un prestamo 
     if (!Grupo_id || !lista_socios) {
-        return []; // corregir a tipo error
+        throw "Campos incompletos";
     }
+    console.log("Esta es la lista de socios: "+lista_socios);
+    console.log("Este es el id del grupo: "+Grupo_id);
     let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
-    const { Ampliacion_prestamos, Limite_credito } = ( ((await db.query(query, [Grupo_id]))[0]))[0];
-
+    const { Creditos_simultaneos, Limite_credito } = ( ((await db.query(query, [Grupo_id]))[0]))[0];
+    
     //asegurarse que no haya excedido su limite de credito
     for (let i = 0; i < lista_socios.length; i++) {
         //Buscamos todos los prestamos activos que tenga y sumamos las cantidades
         let socio = lista_socios[i];
-        let query3 = "SELECT * FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo = 0";
-        const prestamos =  (await db.query(query3, [socio.Socio_id]))[0] as Prestamo[];
+        console.log("Este es el socio: "+socio);
+        socio.forEach(element => console.log(element));
+        let query2 = "SELECT * FROM socios WHERE Socio_id = ?";
+        const datos_personales =  (await db.query(query2, [socio[0].Socio_id]))[0] as Socio[];
+        let query3 = "SELECT * FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0;";
+        const prestamos =  (await db.query(query3, [socio[0].Socio_id, Grupo_id]))[0] as Prestamo[];
         if (prestamos.length <= 0) {
             //puede pedir por que ni siquiera tiene algun prestamo
-            lista_socios_prestamo.push({ "Socio_id": socio.Socio_id, "Nombres": socio.Nombres, "Apellidos": socio.Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": (socio.Acciones * Limite_credito) });
+            lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": (socio[0].Acciones * Limite_credito) });
         } else {
             //si no se permiten prestamos multiples mandar que no puede pedir otro prestamo
-            if (Ampliacion_prestamos === 0) { // [{},{}...] -> 
-                lista_socios_prestamo.push({ "Socio_id": socio.Socio_id, "Nombres": socio.Nombres, "Apellidos": socio.Apellidos, "puede_pedir": 0, "message": "Ya tiene un prestamo vigente" });
+            if (Creditos_simultaneos <= 1) { // [{},{}...] -> 
+                lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Ya tiene un prestamo vigente" });
             } else {
-                let total_prestamos = 0;
-                for (let i = 0; i < prestamos.length; i++) {
-                    prestamos.forEach((prestamo) => {
-                        total_prestamos = total_prestamos + prestamo.Monto_prestamo;
-                    })
-                    let puede_pedir = total_prestamos < (socio.Acciones * Limite_credito) ? 1 : 0;
-                    let Limite_credito_disponible = (socio.Acciones * Limite_credito) - total_prestamos;
-                    if (puede_pedir === 1) {
+                if (prestamos.length > Creditos_simultaneos) {
+                    lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Ya alcanzo el limite de prestamos permitidos" });
+                }else{
+                    let limite = limite_credito(socio[0].Socio_id, Grupo_id, prestamos, socio[0].Acciones, Limite_credito);
+                   if(limite[0] === 1){
                         //si puede pedir porque sus prestamos no superan su limite
-                        lista_socios_prestamo.push({ "Socio_id": socio.Socio_id, "Nombres": socio.Nombres, "Apellidos": socio.Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": Limite_credito_disponible });
-                    } else {
+                        lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": limite[1] });
+                    }else{
                         //agregar el porque no puede pedir un prestamo
-                        lista_socios_prestamo.push({ "Socio_id": socio.Socio_id, "Nombres": socio.Nombres, "Apellidos": socio.Apellidos, "puede_pedir": 0, "message": "Sus prestamos llegan a su limite de credito" });
+                        lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Sus prestamos llegan a su limite de credito" });
                     }
                 }
             }
@@ -248,6 +283,59 @@ export const obtener_acuerdos_activos = async ( Grupo_id: number) => {
 
     if (acuerdos.length > 0) {
         return acuerdos[0];
+    }
+
+    throw "No hay acuerdos activos para el grupo" + Grupo_id;
+}
+
+export const registrar_asistencias = async (/** @type {Number} */ Grupo_id, /** @type {array} */ Socios) => {
+    //comprobar que haya Sesion_id y Socios
+    if (campos_incompletos({ Grupo_id, Socios })) {
+        // return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
+    }
+
+    try {
+        // VERIFICACIONES
+        // Verificar que la sesion existe
+        const sesion = await obtener_sesion_activa(Grupo_id);
+
+        // verificar que la sesion no tenga asistencias ya
+        let query = "select * from asistencias where Sesion_id = ?";
+        const asistencias_grupo = ((await db.query(query, sesion.Sesion_id))[0]) as Asistencia[];
+
+        if(asistencias_grupo.length > 0){
+            throw "Ya hay asistencias registradas para el grupo " + Grupo_id;
+        }
+
+        //registrar asistencias
+        const asistencias_con_error: {Socio_id: number, error: string}[] = [];
+        for (let i = 0; i < Socios.length; i++) {
+            try {
+                // Verificar que el socio existe
+                const socio = await existe_socio(Socios[i].Socio_id);
+                // Verificar que el socio pertenezca al grupo
+                await socio_en_grupo(socio.Socio_id, Grupo_id);
+
+                // INSERCION
+                let query = "INSERT INTO asistencias (Presente, Sesion_id, Socio_id) VALUES (?, ?, ?)";
+                await db.query(query, [Socios[i].Presente, sesion.Sesion_id, Socios[i].Socio_id]);
+            } catch (error) {
+                const { message } = catch_common_error(error)
+                asistencias_con_error.push({
+                    Socio_id: Socios[i].Socio_id,
+                    error: message
+                });
+            }
+        }
+
+        if (asistencias_con_error.length > 0) {
+            // return res.json({ code: 400, message: 'Asistencias con error', data: asistencias_con_error }).status(400);
+        }
+
+        // return res.json({ code: 200, message: 'Asistencias registradas' }).status(200);
+    } catch (error) {
+        const { code, message } = catch_common_error(error);
+        // return res.json({ code, message }).status(code);
     }
 
     throw "No hay acuerdos activos para el grupo" + Grupo_id;

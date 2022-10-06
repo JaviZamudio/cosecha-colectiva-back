@@ -2,7 +2,7 @@ import { OkPacket } from "mysql2";
 import { Connection, Pool, PoolConnection } from "mysql2/promise";
 import db from "../config/database";
 import { existeGrupo } from "./Grupos.services";
-import { obtener_sesion } from "./Sesiones.services";
+import { obtenerSesionActual, obtener_sesion } from "./Sesiones.services";
 import { existeSocio } from "./Socios.services";
 import { crear_transaccion } from "./Transacciones.services";
 
@@ -80,7 +80,7 @@ export const obtener_prestamos_ampliables = async (Grupo_id: number, Socio_id: n
  * @returns Array de objetos de tipo Prestamo.
  * @throws Error si no existe el socio o el grupo.
  */
-export const obtener_prestamos_pagables = async (Grupo_id: number, Socio_id: number): Promise<Prestamo[]> => {
+export const obtenerPrestamosVigentes = async (Grupo_id: number, Socio_id: number): Promise<Prestamo[]> => {
     const socio = await existeSocio(Socio_id);
     const grupo = await existeGrupo(Grupo_id);
 
@@ -89,7 +89,6 @@ export const obtener_prestamos_pagables = async (Grupo_id: number, Socio_id: num
     FROM prestamos
     JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
     JOIN grupos ON grupos.Grupo_id = sesiones.Grupo_id
-    JOIN acuerdos ON acuerdos.Grupo_id = grupos.Grupo_id and acuerdos.\`Status\` = 1
     WHERE prestamos.Estatus_prestamo = 0 -- Que no estén pagados ya
         AND grupos.Grupo_id = ? -- De cierto grupo
         AND prestamos.Socio_id = ? -- De cierto socio
@@ -108,7 +107,8 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
     if (con === undefined) con = db;
 
     const prestamo = await existe_prestamo(Prestamo_id) as Prestamo;
-    const sesion = await obtener_sesion(prestamo.Sesion_id);
+    const sesionPrestamo = await obtener_sesion(prestamo.Sesion_id);
+    const sesionActual = await obtenerSesionActual(sesionPrestamo?.Grupo_id!);
     const deudaInteres = prestamo.Interes_generado - prestamo.Interes_pagado;
     const deudaPrestamo = prestamo.Monto_prestamo - prestamo.Monto_pagado;
 
@@ -125,13 +125,13 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
         Cantidad_movimiento: Monto_abono_prestamo + Monto_abono_interes,
         Socio_id: prestamo.Socio_id,
         Catalogo_id: "ABONO_PRESTAMO",
-        Grupo_id: sesion?.Grupo_id,
+        Grupo_id: sesionPrestamo?.Grupo_id!,
     }, con);
 
     // Crear registro en Transaccion_prestamos
     let query = "INSERT INTO transaccion_prestamos (Prestamo_id, Transaccion_id, Monto_abono_prestamo, Monto_abono_interes) VALUES (?, ?, ?, ?)";
     await con.query(query, [Prestamo_id, transaccion.Transaccion_id, Monto_abono_prestamo, Monto_abono_interes]);
-
+    
     // Actualizar campos en el prestamo
     prestamo.Interes_pagado += Monto_abono_interes;
     prestamo.Monto_pagado += Monto_abono_prestamo;
@@ -143,4 +143,43 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
 
     query = "Update prestamos SET Interes_pagado = ?, Monto_pagado = ?, Estatus_prestamo = ? WHERE Prestamo_id = ?";
     await con.query(query, [prestamo.Interes_pagado, prestamo.Monto_pagado, prestamo.Estatus_prestamo, Prestamo_id]);
+
+    // Agregar ganancia a la sesion
+    query = "Update sesiones SET Ganancias = Ganancias + ? WHERE Sesion_id = ?";
+    const result = await con.query(query, [Monto_abono_interes, sesionActual.Sesion_id]) as [OkPacket, any];
 }
+
+/**
+ * Funcion para generar un prestamo.
+ * @param Grupo_id Id del grupo.
+ * @param campos_prestamo Campos necesarios para crear un prestamo.
+ * @throws Error si el prestamo no se pudo generar.
+ */
+ export const generar_prestamo = async (Grupo_id: number, campos_prestamo: Prestamo, con?: PoolConnection | Pool) => {
+    if (con === undefined) con = db;
+    let query = "INSERT INTO prestamos SET ?";
+    await con.query(query, campos_prestamo);
+    
+    // Registrar transaccion
+     await crear_transaccion({Cantidad_movimiento: -campos_prestamo.Monto_prestamo, Catalogo_id: "ENTREGA_PRESTAMO", Grupo_id, Socio_id: campos_prestamo.Socio_id}, con);
+}
+
+// export const limite_credito = async (Socio_id?: number, Grupo_id: number, con?: PoolConnection | Pool) => {
+//     let query2 = "SELECT * FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0;";
+//     const prestamos =  (await db.query(query2, [Socio_id, Grupo_id]))[0] as Prestamo[];
+//     let total_prestamos = 0;
+//     for (let i = 0; i < prestamos.length; i++) {
+//             prestamos.forEach((prestamo) => {
+//             total_prestamos = total_prestamos + prestamo.Monto_prestamo;
+//         })
+//         let puede_pedir = total_prestamos < (socio[0].Acciones * Limite_credito) ? 1 : 0;
+//         let Limite_credito_disponible = (socio[0].Acciones * Limite_credito) - total_prestamos;
+//         if (puede_pedir === 1) {
+//             //si puede pedir porque sus prestamos no superan su limite
+//             lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": Limite_credito_disponible });
+//         } else {
+//             //agregar el porque no puede pedir un prestamo
+//             lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Sus prestamos llegan a su limite de credito" });
+//         }
+//     }
+// }
