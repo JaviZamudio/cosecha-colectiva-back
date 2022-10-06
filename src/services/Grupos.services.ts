@@ -82,20 +82,3 @@ export const grupos_sin_socio = async (Socio: Socio | number): Promise<number[]>
     )
     `, [Socio]) as [RowDataPacket[], any])[0].map((row: RowDataPacket) => row.Codigo_grupo);
 }
-
-/**
- * Obtiene las relaciones grupo-socio de un grupo.
- * @param Grupo_id Id del grupo.
- * @returns Array de objetos de tipo GrupoSocio.
- * @throws Si los datos no son validos.
- */
- export async function obtenerSociosGrupo(Grupo_id: number): Promise<GrupoSocio[]> {
-    const query = "SELECT * FROM grupo_socio WHERE Grupo_id = ? and Status = 1";
-    const grupo_socio = (await db.query(query, [Grupo_id]))[0] as GrupoSocio[];
-
-    if (grupo_socio.length == 0) {
-        throw "No existe el grupo con el id: " + Grupo_id;
-    }
-
-    return grupo_socio;
-}

@@ -1,17 +1,14 @@
 import * as bcrypt from "bcrypt";
-import { secret } from "../config/config";
+import { node_env, secret } from "../config/config";
 import db from "../config/database";
-import { campos_incompletos, catch_common_error, existe_socio, Fecha_actual, validar_password } from "../utils/validaciones";
+import { aplanar_respuesta, campos_incompletos, catch_common_error, existe_pregunta, existe_socio, Fecha_actual, validar_password } from "../utils/validaciones";
 import * as jwt from "jsonwebtoken";
 import { OkPacket, RowDataPacket } from "mysql2";
 import { getCommonError, validarCurp, validarFecha } from "../utils/utils";
-import { AdminRequest, CustomJwtPayload, SocioRequest } from "../types/misc";
+import { CustomJwtPayload, SocioRequest } from "../types/misc";
 import { existeGrupo } from "../services/Grupos.services";
 import { PoolConnection } from "mysql2/promise";
-import { actualizaPassword, actualizaPreguntaSocio, crearPreguntaSocio, grupos_del_socio, obtenerGrupoSocio, socioEnGrupo, validarPregunta } from "../services/Socios.services";
-import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
-import { crear_transaccion } from "../services/Transacciones.services";
-import { comprar_acciones } from "../services/Acciones.services";
+import { actualizaPassword, actualizaPreguntaSocio, crearPreguntaSocio, validarPassword, validarPregunta, grupos_del_socio, obtenerGrupoSocio } from "../services/Socios.services";
 
 export const register = async (req, res, next) => {
     // Recoger los datos del body
@@ -59,7 +56,7 @@ export const register = async (req, res, next) => {
             throw { code: 400, message: 'El curp no es valido' };
         }
 
-        if (!validarFecha(campos_usuario.Fecha_nac)) {
+        if(!validarFecha(campos_usuario.Fecha_nac)){
             throw { code: 400, message: 'La fecha de nacimiento no es valida, debe ser aaaa-mm-dd' };
         }
 
@@ -94,7 +91,7 @@ export const register = async (req, res, next) => {
             con.release();
         }
 
-        return res.status(200).json({ message: 'Socio creado correctamente' });
+        return res.status(201).json({ message: 'Socio creado correctamente' });
 
     } catch (error) {
         console.log(error);
@@ -106,17 +103,12 @@ export const register = async (req, res, next) => {
 
 //Funcion para enviar las preguntas de seguridad
 export const enviar_preguntas_seguridad = async (req, res) => {
-    // TODO: Enviar las preguntas de seguridad
+
 }
 
 export const cambiar_pregunta_seguridad = async (req: SocioRequest<any>, res) => {
     const { id_socio_actual } = req;
     const { Pregunta_id, Respuesta } = req.body;
-
-    // verificar campos incompletos
-    if (campos_incompletos({ Pregunta_id, Respuesta })) {
-        return res.status(400).json({ code: 400, message: 'Campos incompletos' });
-    }
 
     try {
         await actualizaPreguntaSocio({
@@ -212,11 +204,6 @@ export const recuperar_password = async (req, res) => {
 
 // controlador para unirse a grupo
 export const unirse_grupo = async (req: SocioRequest<any>, res) => {
-    // si el socio no esta en el grupo, se agrega
-    // si el socio ya esta en el grupo, error.
-    // Si el grupo es nuevo (no tiene acuerdos) solo se agrega al socio
-    // Si el grupo ya tiene acuerdos, se agrega al socio y se asignan las acciones
-
     const { id_socio_actual } = req;
     const { Codigo_grupo } = req.body;
 
@@ -224,79 +211,41 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         return res.status(400).json({ code: 400, message: "campos incompletos" });
     }
 
-    const con = await db.getConnection();
     try {
-        await con.beginTransaction();
-
         // validar que el grupo exista
         const grupo = await existeGrupo(Codigo_grupo);
 
+
+
         let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? AND Grupo_id = ?";
-        const [grupo_socio] = await con.query(query, [id_socio_actual, grupo.Grupo_id]) as [GrupoSocio[], any];
+        const [grupo_socio] = await db.query(query, [id_socio_actual, grupo.Grupo_id]) as [GrupoSocio[], any];
 
-
-        // si el socio ya esta en el grupo
-        if (grupo_socio.length != 0) {
-            return res.status(400).json({ code: 400, message: "El socio ya está en el grupo" });
-        }
-
+        // si el socio no esta en el grupo
+        if (grupo_socio.length === 0) {
             const campos_grupo_socio: GrupoSocio = {
                 Socio_id: id_socio_actual!,
                 Grupo_id: grupo.Grupo_id!,
-            Acciones: 0,
+                Acciones: 0,
                 Status: 1,
                 Tipo_socio: "SOCIO",
-            };
+            }
 
             query = "INSERT INTO grupo_socio SET ?";
-        const [resultado_socio] = await con.query(query, campos_grupo_socio) as [OkPacket, any];
-
-        // si hay acuerdo actual, se le asignan las acciones
-        try {
-            const acuerdoActual = await obtenerAcuerdoActual(grupo.Grupo_id!);
-
-            comprar_acciones(resultado_socio.insertId, grupo.Grupo_id, acuerdoActual.Minimo_aportacion, con);
-        } catch (error) {
-            // si no hay acuerdo actual, no se le asignan acciones
+            await db.query(query, campos_grupo_socio);
+            return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente" });
         }
 
-        con.commit();
+        // si el socio está inactivo en el grupo
+        if (grupo_socio[0].Status === 0) {
+            query = "UPDATE grupo_socio SET Status = 1 WHERE Socio_id = ? AND Grupo_id = ?";
+            await db.query(query, [id_socio_actual, grupo.Grupo_id]);
             return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente" });
+        }
+
+        // si el socio está activo en el grupo
+        return res.status(400).json({ code: 400, message: "El socio ya está en el grupo" });
     } catch (error) {
-        con.rollback();
         const { message, code } = catch_common_error(error);
-        return res.status(code).json({ code, message });
-    }
-}
-
-// controlador para retirar ganancias del socio en el grupo
-// obtiene el id del socio de los parametros y del grupo del req
-export const retirar_ganancias = async (req: AdminRequest<any>, res) => {
-    const Socio_id = Number(req.params.Socio_id);
-    const { id_grupo_actual } = req;
-
-    try {
-        // validar que el socio pertenezca al grupo
-        const grupo_socio = await socioEnGrupo(Socio_id, id_grupo_actual!);
-
-        // marcar ganancias como retiradas
-        let query = `
-        UPDATE ganancias
-        SET ganancias.Entregada = 1
-        WHERE Socio_id = ? -- de cierto socio
-        AND ganancias.Sesion_id IN (
-            SELECT sesiones.Sesion_id
-            FROM sesiones
-            WHERE sesiones.Grupo_id = ? -- de cierto grupo
-        )
-        `
-
-        await db.query(query, [Socio_id, id_grupo_actual]);
-
-        // enviar respuesta
-        return res.status(200).json({ code: 200, message: "Ganancias retiradas" });
-    } catch (error) {
-        const { message, code } = getCommonError(error);
         return res.status(code).json({ code, message });
     }
 }
