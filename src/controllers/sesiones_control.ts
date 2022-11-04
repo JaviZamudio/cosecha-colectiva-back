@@ -2,7 +2,7 @@ import db from "../config/database";
 import { Fecha_actual, campos_incompletos, catch_common_error, obtener_sesion_activa, existe_socio, socio_en_grupo } from "../utils/validaciones";
 import { actualizar_intereses, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
 import { AdminRequest } from "../types/misc";
-import { getCommonError } from "../utils/utils";
+import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
 
 //crear nueva sesion
@@ -153,8 +153,8 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
 
         let query = "UPDATE sesiones SET Activa = 0 WHERE Sesion_id = ?";
         await con.query(query, sesionActual.Sesion_id);
-        
-        asignarGananciasSesion(id_grupo_actual!, {sesionActual}, con);
+
+        asignarGananciasSesion(id_grupo_actual!, { sesionActual }, con);
 
         await con.commit();
 
@@ -167,5 +167,38 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
         return res.json({ code, message }).status(code);
     } finally {
         con.release();
+    }
+}
+
+
+export const agendar_sesion = async (req, res) => {
+    const Grupo_id = req.id_grupo_actual;
+    const Lugar = req.body.Lugar;
+    const FechaHora = req.body.FechaHora;
+
+    try {
+        if (camposIncompletos({ Lugar, FechaHora })) {
+            return res.json({ code: 400, message: 'campos incompletos' }).status(400);
+        }
+        let sesion = await obtenerSesionActual(Grupo_id);
+        let query = "UPDATE sesiones SET Fecha_prox_reunion = ?, Lugar_prox_reunion = ? WHERE Sesion_id = ?";
+        await db.query(query, [FechaHora, Lugar, sesion.Sesion_id]);
+        return res.json({ code: 200, message: 'Sesión agendada' }).status(200);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+export const get_lista_socios = async (req, res) => {
+    const Grupo_id = req.params.Grupo_id
+    try {
+        let query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ?";
+        let data = await db.query(query, Grupo_id);
+        return res.json({ code: 200, data : data[0], }).status(200);
+        //preguntar si el status al final funciona o tiene que ser al principio
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
     }
 }
