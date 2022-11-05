@@ -21,11 +21,11 @@ describe("Crear Grupo", () => {
         Authorization: config.Javi.token,
     }
 
-    it("Debería devolver Status 201 si el grupo se creó con exito", async () => {
+    it("Debería devolver Status 200 si el grupo se creó con exito", async () => {
         const response = await request.post("/api/grupos")
             .send(reqBody)
             .set(reqHeader);
 
-        expect(response.statusCode).toEqual(201);
+        expect(response.statusCode).toEqual(200);
     });
 });

@@ -8,6 +8,8 @@ afterAll(async () => {
     await db.end();
 });
 
+jest.setTimeout(10000);
+
 // Crear una sesión
 // POST /api/grupos/:Grupo_id/sesiones
 describe("Crear una sesión", () => {
@@ -17,18 +19,18 @@ describe("Crear una sesión", () => {
 
     test("Debe responder con un código 200", async () => {
         const reqBody = {
-            Asistencias: [
+            Socios: [
                 {
                     Socio_id: config.Javi.id,
-                    Presente: true,
+                    Presente: 1,
                 },
                 {
                     Socio_id: config.Ale.id,
-                    Presente: false,
+                    Presente: 0,
                 },
                 {
                     Socio_id: config.Lau.id,
-                    Presente: true,
+                    Presente: 1,
                 }
             ]
         };
@@ -38,12 +40,16 @@ describe("Crear una sesión", () => {
             .send(reqBody)
             .set(reqHeader);
 
+        if (response.status !== 200) {
+            console.log(response.body);
+        }
+
         expect(response.statusCode).toBe(200);
     });
     
     it("Debe responder con 400 si no están presentes por lo menos la mitad", async () => {
         const reqBody = {
-            Asistencias: [
+            Socios: [
                 {
                     Socio_id: config.Javi.id,
                     Presente: true,

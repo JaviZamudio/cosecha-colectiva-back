@@ -55,11 +55,15 @@ describe("Register", () => {
         Respuesta: falso.randFirstName()
     }
 
-    it("Debería devolver un status de 201", async () => {
+    it("Debería devolver un status de 200", async () => {
         const response = await request.post("/api/socios")
             .send(reqBody);
 
-        expect(response.statusCode).toBe(201);
+        // console.log si no se cumple la condición de jest
+        
+
+
+        expect(response.statusCode).toBe(200);
     });
 
 })

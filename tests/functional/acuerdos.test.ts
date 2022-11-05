@@ -33,13 +33,13 @@ describe("Crear Acuerdos", () => {
         Authorization: config.Javi.token
     }
 
-    it("Debería devolver Status 201 si el acuerdo se creó con exito", async () => {
+    it("Debería devolver Status 200 si el acuerdo se creó con exito", async () => {
 
         const response = await request.post(`/api/grupos/${config.Grupo_prueba.id}/acuerdos`)
             .send(reqBody)
             .set(reqHeader);
 
-        expect(response.statusCode).toEqual(201);
+        expect(response.statusCode).toEqual(200);
     })
 })
 
@@ -54,16 +54,16 @@ describe("Crear Acuerdos Secundarios", () => {
         Authorization: config.Javi.token
     }
 
-    it("Debería devolver Status 201 si el acuerdo secundario se creó con exito", async () => {
+    it("Debería devolver Status 200 si el acuerdo secundario se creó con exito", async () => {
         const response = await request.post(`/api/grupos/${config.Grupo_prueba.id}/acuerdos/secundarios`)
             .send(reqBody)
             .set(reqHeader);
 
-        if(response.statusCode !== 201) {
+        if(response.statusCode !== 200) {
             console.log(response.body);
             console.log(reqBody);
         }
 
-        expect(response.statusCode).toEqual(201);
+        expect(response.statusCode).toEqual(200);
     });
 })

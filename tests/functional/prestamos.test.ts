@@ -1,7 +1,7 @@
 // Tests para el recurso "Prestamos"
 
 import db from "../../src/config/database";
-import { obtener_prestamos_ampliables, obtener_prestamos_pagables } from "../../src/services/Prestamos.services";
+import { obtener_prestamos_ampliables, obtenerPrestamosVigentes } from "../../src/services/Prestamos.services";
 import { eleccion } from "../../src/utils/utils";
 import config from "../config";
 import { request } from "../utils/utils";
@@ -60,7 +60,7 @@ describe("Pagar Prestamos", () => {
     }
 
     it("Debería devolver Status 200 si los prestamos se pagaron con exito", async () => {
-        const prestamos = await obtener_prestamos_pagables(config.Grupo_prueba.id, config.Javi.id);
+        const prestamos = await obtenerPrestamosVigentes(config.Grupo_prueba.id, config.Javi.id);
         const reqBody = {
             Prestamos: [
                 {

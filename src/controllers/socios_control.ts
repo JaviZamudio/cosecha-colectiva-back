@@ -60,7 +60,7 @@ export const register = async (req, res, next) => {
         }
 
         if (!validarFecha(campos_usuario.Fecha_nac)) {
-            throw { code: 400, message: 'La fecha de nacimiento no es valida, debe ser aaaa-mm-dd' };
+            throw { code: 400, message: `La fecha de nacimiento ${campos_usuario.Fecha_nac} no es valida, debe ser aaaa-mm-dd` };
         }
 
         //comprobar que el curp sea unico
@@ -97,7 +97,6 @@ export const register = async (req, res, next) => {
         return res.status(200).json({ message: 'Socio creado correctamente' });
 
     } catch (error) {
-        console.log(error);
         const { code, message } = getCommonError(error);
         return res.status(code).json({ code, message });
     }

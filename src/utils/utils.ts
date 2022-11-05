@@ -30,8 +30,10 @@ export const validarCurp = function (curp: string) {
 
 export const formatearFecha = function (date: Date) {
     var year = date.getFullYear();
-    var month = date.getMonth() + 1;
-    var day = date.getDate();
+    var month = (1 + date.getMonth()).toString();
+    month = month.length > 1 ? month : '0' + month; //agrega un 0 si es menor a 10. ej: 9 => 09
+    var day = date.getDate().toString();
+    day = day.length > 1 ? day : '0' + day; //agrega un 0 si es menor a 10. ej: 9 => 09
     return year + '-' + month + '-' + day;
 }
 

@@ -2,7 +2,7 @@ import db from "../config/database";
 import { Fecha_actual, campos_incompletos, catch_common_error, obtener_sesion_activa, existe_socio, socio_en_grupo } from "../utils/validaciones";
 import { obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
 import { AdminRequest } from "../types/misc";
-import { getCommonError } from "../utils/utils";
+import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
 
 //crear nueva sesion
@@ -17,7 +17,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         Grupo_id
     }
 
-    if (campos_incompletos(campos_sesion)) {
+    if (camposIncompletos(campos_sesion)) {
         return res.json({ code: 400, message: 'campos incompletos' }).status(400);
     }
 
@@ -59,9 +59,8 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         registrar_asistencias(Grupo_id, Socios);
         return res.json({ code: 200, message: 'Sesion creada y asistencias registradas' }).status(200);
     } catch (error) {
-        console.log(error);
-        const { code, message } = catch_common_error(error);
-        return res.json({ code, message }).status(code);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
     }
 }
 

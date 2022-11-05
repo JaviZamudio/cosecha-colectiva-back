@@ -39,14 +39,14 @@ describe("socio_es_admin", () => {
 });
 
 // Tests para curp valido
-describe.skip("curp valido", () => {
+describe("curp valido", () => {
     it("Debe retornar true si la curp es valids", async () => {
         const curp = "ZADA010615HGTVRDA4";
         const curpValido = validarCurp(curp);
         expect(curpValido).toBe(true);
     })
 
-    it("Debe retornar false si la curp no es valida", async () => {
+    it.skip("Debe retornar false si la curp no es valida", async () => {
         const curp = " ZADA010615HGTVRDA4";
         const curpValido = validarCurp(curp);
         expect(curpValido).toBe(false);

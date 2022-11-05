@@ -19,16 +19,16 @@ describe("Compra de acciones", () => {
         Authorization: config.Javi.token,
     }
 
-    it("Debería devolver Status 201 si la accion se compró con exito", async () => {
+    it("Debería devolver Status 200 si la accion se compró con exito", async () => {
         const response = await request.post(`/api/grupos/${config.Grupo_prueba.id}/socios/${config.Javi.id}/acciones`)
             .send(reqBody)
             .set(reqHeader);
 
-        if( response.status !== 201 ) {
+        if( response.status !== 200 ) {
             console.log(response.body);
         }
 
-        expect(response.statusCode).toEqual(201);
+        expect(response.statusCode).toEqual(200);
     }, 5000);
 });
 

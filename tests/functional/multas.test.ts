@@ -25,12 +25,12 @@ describe("Crear Multa", () => {
         Authorization: config.Javi.token,
     }
 
-    it("Debería devolver Status 201 si la multa se creó con exito", async () => {
+    it("Debería devolver Status 200 si la multa se creó con exito", async () => {
         const response = await request.post(`/api/grupos/${config.Grupo_prueba.id}/socios/${reqBody.Socio_id}/multas`)
             .send(reqBody)
             .set(reqHeader);
 
-        expect(response.statusCode).toEqual(201);
+        expect(response.statusCode).toEqual(200);
     }, 5000);
 });
 
