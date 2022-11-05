@@ -1,12 +1,10 @@
 import db from "../config/database";
-import { existe_prestamo, pagarPrestamo, prestamo_es_pagable, generar_prestamo } from "../services/Prestamos.services";
-import { crear_transaccion } from "../services/Transacciones.services";
+import { pagarPrestamo, generar_prestamo } from "../services/Prestamos.services";
 import { formatearFecha, getCommonError } from "../utils/utils";
 import { obtener_caja_sesion, obtenerSesionActual } from "../services/Sesiones.services";
 import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
-import { prestamos_multiples, limite_credito, campos_incompletos, Fecha_actual, obtener_acuerdos_activos } from "../utils/validaciones";
+import { prestamos_multiples, limite_credito, campos_incompletos, Fecha_actual } from "../utils/validaciones";
 import { AdminRequest } from "../types/misc";
-import { existeGrupo } from "../services/Grupos.services";
 
 export const enviar_socios_prestamo = async (req, res) => {
     const { Grupo_id } = req.body;
@@ -98,7 +96,7 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
             campos_prestamo.Prestamo_original_id = null;
             // Crear Registro en prestamos
             await generar_prestamo(Grupo_id, campos_prestamo, con);
-            // return res.status(201).json({ code: 201, message: "Prestamo creado" });
+            // return res.status(200).json({ code: 200, message: "Prestamo creado" });
         } else {
             // Verificar que el socio pueda generar un prestamo ampliado
             if (!acuerdoActual.Ampliacion_prestamos) {
@@ -139,8 +137,8 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
         }
 
         await con.commit();
-        // return res.status(201).json({ code: 201, message: "Ampliacion hecha" });
-        return res.status(201).json({ code: 201, message: "Listo (:" });
+        // return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
+        return res.status(200).json({ code: 200, message: "Listo (:" });
     } catch (error) {
         console.log('holiwi')
         await con.rollback();
