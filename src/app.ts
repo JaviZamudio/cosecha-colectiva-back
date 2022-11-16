@@ -16,7 +16,7 @@ app.use(helmet());
 app.use(express.static("public"));
 
 // Morgan solo en node_env = "dev"
-if (node_env === "DEV") {
+if (node_env === "development") {
     app.use(morgan('dev'));
 }
 
