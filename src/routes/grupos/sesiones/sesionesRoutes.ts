@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { crear_sesion, enviar_inasistencias_sesion, finalizar_sesion, registrar_retardos, agendar_sesion, get_lista_socios } from "../../../controllers/sesiones_control";
+import { crear_sesion, enviar_inasistencias_sesion, finalizar_sesion, registrar_retardos, agendar_sesion, get_lista_socios, recoger_firma } from "../../../controllers/sesiones_control";
 import { authAdmin } from "../../../middleware/auth";
 
 // Router empezando en /api/grupos/:Grupo_id/sesiones
@@ -17,5 +17,7 @@ router.post("/retardos", authAdmin, registrar_retardos);
 router.post("/finalizar", authAdmin, finalizar_sesion);
 // Agendar sesion
 router.post("/agendar", authAdmin, agendar_sesion);
+// Recoger firma de usuario en la sesion
+router.post("/:Socio_id/firma", authAdmin, recoger_firma);
 
 export { router as sesionesRoutes };

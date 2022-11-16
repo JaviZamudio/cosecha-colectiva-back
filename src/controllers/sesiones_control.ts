@@ -4,6 +4,8 @@ import { actualizar_intereses, disminuir_sesiones, obtenerSesionActual, registra
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
+import { aws_bucket_name } from "../config/config";
+import { s3 } from "../config/aws";
 
 //crear nueva sesion
 export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": number, "Presente": 1 | 0 }[] }>, res) => {
@@ -195,8 +197,52 @@ export const get_lista_socios = async (req, res) => {
     try {
         let query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ?";
         let data = await db.query(query, Grupo_id);
-        return res.json({ code: 200, data : data[0], }).status(200);
+        return res.json({ code: 200, data: data[0], }).status(200);
         //preguntar si el status al final funciona o tiene que ser al principio
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+/**
+ * Funcion para obtener la imagen de la firma desde el front y subirla a AWS S3
+ * @param req 
+ * @param res 
+ */
+export const recoger_firma = async (req, res) => {
+    const { id_grupo_actual } = req;
+    const { Socio_id } = req.params;
+    const { Firma }: { Firma: string } = req.body
+
+    try {
+        // Verificar que el socio existe
+        const socio = await existe_socio(Socio_id);
+        // Verificar que el socio pertenezca al grupo
+        await socio_en_grupo(socio.Socio_id, id_grupo_actual!);
+
+        // Verificar que la sesion existe
+        const sesion = await obtener_sesion_activa(id_grupo_actual!);
+
+        const params: any & {Body?: any} = {
+            Bucket: aws_bucket_name,
+            Key: `firmas/${sesion.Sesion_id}/${socio.Socio_id}.png`,
+            Body: Firma,
+        }
+
+        await s3.upload(params).promise().then((data) => {
+            console.log(data);
+        }).then(() => {
+            // getObject
+            delete params.Body;
+            s3.getObject(params, (err, data) => {
+                if (err) throw err;
+                console.log(data);
+                console.log(data.Body?.toString());
+            });
+        })
+
+        return res.json({ code: 200, message: 'Firma subida' }).status(200);
     } catch (error) {
         const { code, message } = getCommonError(error);
         return res.json({ code, message }).status(code);
