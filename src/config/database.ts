@@ -1,12 +1,9 @@
 import { createPool } from 'mysql2';
-import { host, user, password, database } from './config';
+import { host, user, password, database, db_url } from './config';
 
 const db = createPool({
     connectionLimit: 10,
-    host,
-    user,
-    password,
-    database
+    uri: db_url
 }).promise();
 
 export default db;
