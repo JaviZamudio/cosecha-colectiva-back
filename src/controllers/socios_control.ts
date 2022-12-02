@@ -105,7 +105,14 @@ export const register = async (req, res, next) => {
 
 //Funcion para enviar las preguntas de seguridad
 export const enviar_preguntas_seguridad = async (req, res) => {
-    // TODO: Enviar las preguntas de seguridad
+    try {
+        let query = "SELECT * FROM preguntas_seguridad";
+        const [preguntasSeguridad] = await db.query(query) as [PreguntaSeguridad[], any];
+        return res.status(200).json(preguntasSeguridad);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
 }
 
 export const cambiar_pregunta_seguridad = async (req: SocioRequest<any>, res) => {
@@ -386,12 +393,12 @@ export const modificar_socio = async (req: SocioRequest<any>, res: Response) => 
     const campos = ["Nombres", "Apellidos", "CURP", "Fecha_nac", "Nacionalidad", "Sexo", "Escolaridad", "Ocupacion", "Estado_civil", "Hijos", "Telefono", "Email", "Localidad", "Municipio", "Estado", "CP", "Pais", "Foto_perfil", "Username"];
 
     // Extraer los campos existentes del req.body
-    let campos_socio: any = {};    
-    for (let campo in req.body){
-        if(campos.includes(campo)) {
+    let campos_socio: any = {};
+    for (let campo in req.body) {
+        if (campos.includes(campo)) {
             campos_socio[campo] = req.body[campo];
         } else {
-            return res.status(400).json({message: `El campo '${campo}', no existe o no se puede modificar`})
+            return res.status(400).json({ message: `El campo '${campo}', no existe o no se puede modificar` })
         }
     }
 
