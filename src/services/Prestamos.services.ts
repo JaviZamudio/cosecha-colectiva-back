@@ -114,7 +114,8 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
 
     await prestamo_es_pagable(prestamo);
     const Monto_abono_prestamo = Monto_abono <= deudaInteres ? 0 : Monto_abono - deudaInteres;
-    const Monto_abono_interes = Monto_abono - Monto_abono_prestamo;
+    const Monto_abono_interes = parseFloat((Monto_abono - Monto_abono_prestamo).toFixed(4));
+
 
     if (Monto_abono > deudaPrestamo + deudaInteres) {
         throw `Lo abonado al prestamo (${Monto_abono_prestamo}) es mayor que la deuda por prestamo (${prestamo.Monto_prestamo - prestamo.Monto_pagado})`;
@@ -137,7 +138,7 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
     prestamo.Monto_pagado += Monto_abono_prestamo;
 
     const nuevaDeudaPrestamo = prestamo.Monto_prestamo - prestamo.Monto_pagado;
-    const nuevaDeudaInteres = prestamo.Interes_generado - prestamo.Interes_pagado;
+    const nuevaDeudaInteres = prestamo.Interes_generado - prestamo.Interes_pagado; // 0.48 - 0.48000004 = -0.00000004
 
     prestamo.Estatus_prestamo = nuevaDeudaPrestamo === 0 && nuevaDeudaInteres === 0 ? 1 : 0;
 

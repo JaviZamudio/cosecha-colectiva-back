@@ -8,10 +8,10 @@ import { getCommonError, validarCurp, validarFecha } from "../utils/utils";
 import { AdminRequest, CustomJwtPayload, SocioRequest } from "../types/misc";
 import { existeGrupo } from "../services/Grupos.services";
 import { PoolConnection } from "mysql2/promise";
-import { actualizaPassword, actualizaPreguntaSocio, crearPreguntaSocio, grupos_del_socio, obtenerGrupoSocio, socioEnGrupo, validarPregunta } from "../services/Socios.services";
+import { actualizaPassword, actualizaPreguntaSocio, crearPreguntaSocio, existeCurp, existeSocio, existeUsername, grupos_del_socio, obtenerGrupoSocio, socioEnGrupo, validarPregunta } from "../services/Socios.services";
 import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
-import { crear_transaccion } from "../services/Transacciones.services";
 import { comprar_acciones } from "../services/Acciones.services";
+import { Response } from "express";
 
 export const register = async (req, res, next) => {
     // Recoger los datos del body
@@ -97,7 +97,6 @@ export const register = async (req, res, next) => {
         return res.status(200).json({ message: 'Socio creado correctamente' });
 
     } catch (error) {
-        console.log(error);
         const { code, message } = getCommonError(error);
         return res.status(code).json({ code, message });
     }
@@ -106,7 +105,14 @@ export const register = async (req, res, next) => {
 
 //Funcion para enviar las preguntas de seguridad
 export const enviar_preguntas_seguridad = async (req, res) => {
-    // TODO: Enviar las preguntas de seguridad
+    try {
+        let query = "SELECT * FROM preguntas_seguridad";
+        const [preguntasSeguridad] = await db.query(query) as [PreguntaSeguridad[], any];
+        return res.status(200).json(preguntasSeguridad);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
 }
 
 export const cambiar_pregunta_seguridad = async (req: SocioRequest<any>, res) => {
@@ -262,15 +268,15 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
             return res.status(400).json({ code: 400, message: "El socio ya está en el grupo" });
         }
 
-            const campos_grupo_socio: GrupoSocio = {
-                Socio_id: id_socio_actual!,
-                Grupo_id: grupo.Grupo_id!,
+        const campos_grupo_socio: GrupoSocio = {
+            Socio_id: id_socio_actual!,
+            Grupo_id: grupo.Grupo_id!,
             Acciones: 0,
-                Status: 1,
-                Tipo_socio: "SOCIO",
-            };
+            Status: 1,
+            Tipo_socio: "SOCIO",
+        };
 
-            query = "INSERT INTO grupo_socio SET ?";
+        query = "INSERT INTO grupo_socio SET ?";
         const [resultado_socio] = await con.query(query, campos_grupo_socio) as [OkPacket, any];
 
         // si hay acuerdo actual, se le asignan las acciones
@@ -283,7 +289,7 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         }
 
         con.commit();
-            return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente" });
+        return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente" });
     } catch (error) {
         con.rollback();
         const { message, code } = catch_common_error(error);
@@ -328,7 +334,7 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
 
     try {
         const grupos: Grupo[] = await grupos_del_socio(id_socio_actual!);
-        const data: {Grupo_id: number, Nombre: string, Rol_socio: "ADMIN" | "SOCIO" | "SUPLENTE" | "CREADOR"}[] = [];
+        const data: { Grupo_id: number, Nombre: string, Rol_socio: "ADMIN" | "SOCIO" | "SUPLENTE" | "CREADOR" }[] = [];
         for (const grupo of grupos) {
             data.push({
                 Grupo_id: grupo.Grupo_id!,
@@ -339,6 +345,95 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
 
         return res.status(200).json({ code: 200, message: "Información de los grupos", data });
 
+    } catch (error) {
+        const { message, code } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+export const enviar_socio = async (req: SocioRequest<any>, res) => {
+    const { id_socio_actual } = req;
+
+    try {
+        const socio = await existeSocio(id_socio_actual!);
+
+        return res.status(200).json({
+            code: 200, message: "Información del socio", data: {
+                Nombres: socio.Nombres,
+                Apellidos: socio.Apellidos,
+                CURP: socio.CURP,
+                Fecha_nac: socio.Fecha_nac,
+                Nacionalidad: socio.Nacionalidad,
+                Sexo: socio.Sexo,
+                Escolaridad: socio.Escolaridad,
+                Ocupacion: socio.Ocupacion,
+                Estado_civil: socio.Estado_civil,
+                Hijos: socio.Hijos,
+                Telefono: socio.Telefono,
+                Email: socio.Email,
+                Localidad: socio.Localidad,
+                Municipio: socio.Municipio,
+                Estado: socio.Estado,
+                CP: socio.CP,
+                Pais: socio.Pais,
+                Foto_perfil: socio.Foto_perfil,
+                Username: socio.Username
+            }
+        });
+
+    } catch (error) {
+        const { message, code } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+export const modificar_socio = async (req: SocioRequest<any>, res: Response) => {
+    const { id_socio_actual } = req;
+
+    const campos = ["Nombres", "Apellidos", "CURP", "Fecha_nac", "Nacionalidad", "Sexo", "Escolaridad", "Ocupacion", "Estado_civil", "Hijos", "Telefono", "Email", "Localidad", "Municipio", "Estado", "CP", "Pais", "Foto_perfil", "Username"];
+
+    // Extraer los campos existentes del req.body
+    let campos_socio: any = {};
+    for (let campo in req.body) {
+        if (campos.includes(campo)) {
+            campos_socio[campo] = req.body[campo];
+        } else {
+            return res.status(400).json({ message: `El campo '${campo}', no existe o no se puede modificar` })
+        }
+    }
+
+    try {
+        const socio = await existeSocio(id_socio_actual!);
+
+        // validar que haya al menos un campo
+        if (Object.keys(campos_socio).length == 0) {
+            return res.status(400).json({ code: 400, message: "No se ha enviado ningún campo" });
+        }
+
+        // validar que el username no exista
+        if (campos_socio.Username && campos_socio.Username != socio.Username) {
+            if (await existeUsername(campos_socio.Username)) {
+                return res.status(400).json({ code: 400, message: "El username ya existe" });
+            }
+        }
+
+        // validar que el CURP no exista
+        if (campos_socio.CURP && campos_socio.CURP != socio.CURP) {
+            if (await existeCurp(campos_socio.CURP)) {
+                return res.status(400).json({ code: 400, message: "El CURP ya existe" });
+            }
+
+            // validar que el CURP sea valido
+            if (!validarCurp(campos_socio.CURP)) {
+                return res.status(400).json({ code: 400, message: "El CURP no es valido" });
+            }
+        }
+
+        // modificar los datos del socio
+        let query = "UPDATE socios SET ? WHERE Socio_id = ?";
+        await db.query(query, [campos_socio, id_socio_actual]);
+
+        return res.status(200).json({ code: 200, message: "Socio modificado" });
     } catch (error) {
         const { message, code } = getCommonError(error);
         return res.status(code).json({ code, message });

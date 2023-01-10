@@ -277,3 +277,36 @@ export const obtenerLimiteCreditoDisponible = async (Socio_id: number, Grupo_id:
 
     return limiteCreditoTotal - prestamosVigentesTotal;
 }
+
+/**
+ * Funcion para saber si un Username ya existe
+ * @param Username El username a buscar
+ * @returns True o false dependiendo si el username ya existe
+ * @throws Si hay algun error
+ */
+export const existeUsername = async (Username: string) => {
+    const query = "SELECT * FROM socios WHERE Username = ?";
+    const [result] = await db.query(query, [Username]) as [Socio[], any];
+
+    if (result.length === 0) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Funcion para saber si un Curp ya existe
+ * @param Curp El curp a buscar
+ * @returns True o false dependiendo si el curp ya existe
+ */
+export const existeCurp = async (Curp: string) => {
+    const query = "SELECT * FROM socios WHERE Curp = ?";
+    const [result] = await db.query(query, [Curp]) as [Socio[], any];
+
+    if (result.length === 0) {
+        return false;
+    }
+
+    return true;
+}
