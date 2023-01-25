@@ -222,11 +222,11 @@ export const recoger_firma = async (req, res) => {
         await socio_en_grupo(socio.Socio_id, id_grupo_actual!);
 
         // Verificar que la sesion existe
-        const sesion = await obtener_sesion_activa(id_grupo_actual!);
+        const sesionActual = await obtenerSesionActual(id_grupo_actual!);
 
         const params: any & {Body?: any} = {
             Bucket: aws_bucket_name,
-            Key: `firmas/${sesion.Sesion_id}/${socio.Socio_id}.png`,
+            Key: `firmas/${sesionActual.Sesion_id}/${socio.Socio_id}.png`,
             Body: Firma,
         }
 
@@ -241,6 +241,10 @@ export const recoger_firma = async (req, res) => {
                 console.log(data.Body?.toString());
             });
         })
+
+        // en la tabla asistencias, en la fila del socio y la sesion actual, poner la direccion de la firma para poder acceder a ella
+        let query = "UPDATE asistencias SET Firma = ? WHERE Socio_id = ? AND Sesion_id = ?";
+        await db.query(query, [params.Key, Socio_id, sesionActual.Sesion_id]);
 
         return res.json({ code: 200, message: 'Firma subida' }).status(200);
     } catch (error) {
