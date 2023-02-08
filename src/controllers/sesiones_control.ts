@@ -95,10 +95,11 @@ export const enviar_inasistencias_sesion = async (req, res) => {
 //Registrar retardos
 export const registrar_retardos = async (req, res) => {
     const { id_grupo_actual: Grupo_id } = req;
-    const { Retardos: Socios } = req.body;
+    const { Socios } = req.body;
 
     //comprobar que haya Sesion_id y Socios
     if (!Grupo_id || !Socios) {
+        console.log(Grupo_id, Socios);
         // campos incompletos
         return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
     }
