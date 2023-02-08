@@ -70,7 +70,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
 
 //Obtener inasistencias de la sesion
 export const enviar_inasistencias_sesion = async (req, res) => {
-    const { Grupo_id } = req.body;
+    const Grupo_id = req.id_grupo_actual;
 
     //comprobar que haya Sesion_id y Socios
     if (!Grupo_id) {
