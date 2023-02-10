@@ -94,9 +94,9 @@ export const enviar_inasistencias_sesion = async (req, res) => {
 
 //Registrar retardos
 export const registrar_retardos = async (req, res) => {
-    const { id_grupo_actual: Grupo_id } = req;
-    const { Retardos: Socios } = req.body;
-
+    const Grupo_id  = req.id_grupo_actual;
+    const { Socios } = req.body;
+    
     //comprobar que haya Sesion_id y Socios
     if (!Grupo_id || !Socios) {
         // campos incompletos
@@ -116,10 +116,16 @@ export const registrar_retardos = async (req, res) => {
                 const socio = await existe_socio(Socios[i]);
                 // Verificar que el socio pertenezca al grupo
                 await socio_en_grupo(socio.Socio_id, Grupo_id);
-
                 // INSERCION
                 let query = "UPDATE asistencias SET Presente = 2 WHERE Sesion_id = ? AND Socio_id = ? AND Presente != 1";
-                await db.query(query, [sesion.Sesion_id, Socios[i]]);
+                const [upd] = await db.query(query, [sesion.Sesion_id, Socios[i]]);
+                const json: any = upd;
+                if(json.affectedRows===0){
+                    retardos_con_error.push({
+                        Socio_id: Socios[i],
+                        error: 'Ya tiene asistencia'
+                    });
+                }
             } catch (error) {
                 const { message } = catch_common_error(error)
                 retardos_con_error.push({
