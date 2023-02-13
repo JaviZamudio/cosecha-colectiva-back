@@ -208,3 +208,18 @@ export const get_lista_socios = async (req, res) => {
         return res.json({ code, message }).status(code);
     }
 }
+
+export const get_conteo_dinero = async (req, res) => {
+    const Grupo_id = req.params.Grupo_id
+    if(!Grupo_id){
+        return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
+    }
+    try {
+        const sesion = await obtenerSesionActual(Grupo_id);
+        return res.json({ code: 200, data : sesion.Caja, }).status(200);
+        //preguntar si el status al final funciona o tiene que ser al principio
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
