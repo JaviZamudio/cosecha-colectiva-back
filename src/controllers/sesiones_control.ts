@@ -94,9 +94,9 @@ export const enviar_inasistencias_sesion = async (req, res) => {
 
 //Registrar retardos
 export const registrar_retardos = async (req, res) => {
-    const { id_grupo_actual: Grupo_id } = req;
-    const { Retardos: Socios } = req.body;
-
+    const Grupo_id  = req.id_grupo_actual;
+    const { Socios } = req.body;
+    
     //comprobar que haya Sesion_id y Socios
     if (!Grupo_id || !Socios) {
         // campos incompletos
@@ -116,10 +116,16 @@ export const registrar_retardos = async (req, res) => {
                 const socio = await existe_socio(Socios[i]);
                 // Verificar que el socio pertenezca al grupo
                 await socio_en_grupo(socio.Socio_id, Grupo_id);
-
                 // INSERCION
                 let query = "UPDATE asistencias SET Presente = 2 WHERE Sesion_id = ? AND Socio_id = ? AND Presente != 1";
-                await db.query(query, [sesion.Sesion_id, Socios[i]]);
+                const [upd] = await db.query(query, [sesion.Sesion_id, Socios[i]]);
+                const json: any = upd;
+                if(json.affectedRows===0){
+                    retardos_con_error.push({
+                        Socio_id: Socios[i],
+                        error: 'Ya tiene asistencia'
+                    });
+                }
             } catch (error) {
                 const { message } = catch_common_error(error)
                 retardos_con_error.push({
@@ -196,6 +202,21 @@ export const get_lista_socios = async (req, res) => {
         let query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ?";
         let data = await db.query(query, Grupo_id);
         return res.json({ code: 200, data : data[0], }).status(200);
+        //preguntar si el status al final funciona o tiene que ser al principio
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+export const get_conteo_dinero = async (req, res) => {
+    const Grupo_id = req.params.Grupo_id
+    if(!Grupo_id){
+        return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
+    }
+    try {
+        const sesion = await obtenerSesionActual(Grupo_id);
+        return res.json({ code: 200, data : sesion.Caja, }).status(200);
         //preguntar si el status al final funciona o tiene que ser al principio
     } catch (error) {
         const { code, message } = getCommonError(error);
