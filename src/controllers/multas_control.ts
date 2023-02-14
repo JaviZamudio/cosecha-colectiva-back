@@ -6,7 +6,7 @@ import { existe_grupo, campos_incompletos, existe_socio, catch_common_error, exi
 
 
 export const get_multas_activas_por_grupo = async (req, res) => {
-    const { Grupo_id } = req.body;
+    const Grupo_id = req.params.Grupo_id;
 
     if (!Grupo_id) {
         return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
@@ -16,7 +16,7 @@ export const get_multas_activas_por_grupo = async (req, res) => {
         // Verificar que el grupo existe
         const { } = await existe_grupo(Grupo_id)
 
-        const query = "SELECT * FROM multas WHERE Grupo_id = ? and Status = 0 order by Socio_id, Sesion_id";
+        const query = "SELECT multas.Monto_multa, multas.Descripcion, socios.Nombres, socios.Apellidos, sesiones.Fecha FROM multas INNER JOIN socios ON socios.Socio_id = multas.Socio_id INNER JOIN sesiones ON sesiones.Sesion_id = multas.Sesion_id WHERE Grupo_id = ? AND multas.`Status` = 0 order by multas.Socio_id, multas.Sesion_id;";
         const [multas] = await db.query(query, [Grupo_id]);
 
         return res.json({ code: 200, message: 'Multas obtenidas', data: multas }).status(200);
