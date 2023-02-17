@@ -17,6 +17,7 @@ export const get_multas_activas_por_grupo = async (req, res) => {
         // Verificar que el grupo existe
         const { } = await existe_grupo(Grupo_id)
 
+
         const query = "SELECT multas.Monto_multa, multas.Descripcion, socios.Nombres, socios.Apellidos, sesiones.Fecha FROM multas INNER JOIN socios ON socios.Socio_id = multas.Socio_id INNER JOIN sesiones ON sesiones.Sesion_id = multas.Sesion_id WHERE sesiones.Grupo_id = ? AND multas.Socio_id = ? AND multas.`Status` = 0 order by multas.Socio_id, multas.Sesion_id;";
         const [multas] = await db.query(query, [Grupo_id, Socio_id]);
 
