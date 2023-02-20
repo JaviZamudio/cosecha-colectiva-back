@@ -29,11 +29,10 @@ export const crear_grupo = async (req: SocioRequest<Grupo>, res) => {
     }
 
     try {
-        await crearGrupo(campos_grupo);
-
+        const newgroup = await crearGrupo(campos_grupo);
         await agregarSocioGrupo(id_socio_actual!, campos_grupo.Codigo_grupo);
 
-        return res.status(200).json({ code: 200, message: 'Grupo creado', data: { Codigo_grupo: campos_grupo.Codigo_grupo } });
+        return res.status(200).json({ code: 200, message: 'Grupo creado', data: { Codigo_grupo: campos_grupo.Codigo_grupo, Grupo_id: newgroup.insertId } });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
