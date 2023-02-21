@@ -6,7 +6,7 @@ import { authAdmin } from "../../../middleware/auth";
 const router = Router({ mergeParams: true });
 
 //Ver multas por grupo
-router.get("/", authAdmin, get_multas_activas_por_grupo);
+router.post("/", authAdmin, get_multas_activas_por_grupo);
 
 // Pagar multas
 router.patch("/", authAdmin, pagar_multas);
