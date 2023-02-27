@@ -34,6 +34,32 @@ export const socio_es_admin = async (Socio_id: number, Grupo_id: number) => {
 }
 
 /**
+ * Funcion para verificar si un socio es socio de un grupo.
+ * 
+ * @param Socio_id id del socio a verificar.
+ * @param Grupo_id id del grupo a verificar.
+ * @returns true si el socio es socio del grupo
+ * @throws Si el socio no es socio del grupo.
+ */
+export const socio_es_socio = async (Socio_id: number, Grupo_id: number) => {
+    // Verificar que el socio existe
+    await existeSocio(Socio_id);
+    // Verificar que el grupo existe
+    await existeGrupo(Grupo_id);
+
+    // Consultar si el socio es socio del grupo
+    const query = "SELECT * FROM grupo_socio WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Socio_id = ?";
+    const [rows] = (await db.query(query, [Grupo_id, Socio_id]) as [GrupoSocio[], any]);
+
+    // Si el socio no es socio del grupo, lanzar error
+    if (rows.length === 0) {
+        throw { code: 403, message: "La persona no es socio del grupo" };
+    }
+
+    return true;
+}
+
+/**
  * Funcion para agregar un socio a un grupo.
  * 
  * @param Socio_id id del socio que agrega al grupo.

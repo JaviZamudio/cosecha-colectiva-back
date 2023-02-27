@@ -129,3 +129,34 @@ export const enviar_costo_acciones = async (req: AdminRequest<any>, res: Respons
         return res.status(code).json({ code, message });        
     }
 }
+
+export const acciones_sesion_socio = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    const { id_socio_actual } = req;
+    // Validar que haya una sesion activa
+    const sesionActual = await obtenerSesionActual(Grupo_id);
+
+    try {
+        //Sacar el nombre del grupo
+        let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
+        const [nombre] = await db.query(query, Grupo_id);
+        //Devolver el Sesion_id y la Fecha
+        let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Sesion_id = ?";
+        const [sesion] = await db.query(query2, sesionActual.Sesion_id);
+        //Total de acciones que tiene el socio en el grupo
+        let query3 = "SELECT Acciones FROM grupo_socio WHERE Grupo_id = ? AND Socio_id = ?";
+        const [accionesT] = await db.query(query3, [Grupo_id, id_socio_actual]);
+        //Total de acciones compradas en esa sesion
+        let query4 = "SELECT SUM(Cantidad_movimiento) FROM transacciones WHERE Sesion_id = ? AND Socio_id = ? AND Catalogo_id = 'COMPRA_ACCION'";
+        const [accionesC] = await db.query(query4, [sesionActual.Sesion_id, id_socio_actual]);
+        //Total de acciones retiradas en esa sesion
+        let query5 = "SELECT SUM(Cantidad_movimiento) FROM transacciones WHERE Sesion_id = ? AND Socio_id = ? AND Catalogo_id = 'RETIRO_ACCION'";
+        const [accionesR] = await db.query(query5, [sesionActual.Sesion_id, id_socio_actual]);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesion: sesion, numAccionesT: accionesT, numAccionesC : accionesC, numAccionesR: accionesR });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}

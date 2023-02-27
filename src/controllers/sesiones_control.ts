@@ -224,3 +224,20 @@ export const get_conteo_dinero = async (req, res) => {
         return res.json({ code, message }).status(code);
     }
 }
+
+export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = req.id_grupo_actual;
+
+    try {
+        let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
+        const [nombre] = await db.query(query, Grupo_id);
+        let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Grupo_id = ?";
+        const [sesiones] = await db.query(query2, Grupo_id);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre,sesiones: sesiones });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}

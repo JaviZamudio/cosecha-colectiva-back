@@ -8,7 +8,7 @@ const router = Router({ mergeParams: true });
 //Informacion de pantalla mis grupos
 router.get("/grupos", authSocio, enviar_grupos_socio);
 //Informacion de entidades federativas para registrar socio
-router.get("/entidades/:codigoPostal", authSocio, buscar_entidad);
+router.get("/entidades/:codigoPostal", buscar_entidad);
 // Registrar un socio
 router.post("/", register);
 // Login
