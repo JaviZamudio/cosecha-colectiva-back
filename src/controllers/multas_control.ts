@@ -1,5 +1,6 @@
 import { OkPacket } from 'mysql2';
 import db from '../config/database';
+import { obtenerSesionActual } from '../services/Sesiones.services';
 import { AdminRequest } from '../types/misc';
 import { getCommonError } from '../utils/utils';
 import { existe_grupo, campos_incompletos, existe_socio, catch_common_error, existe_multa, obtener_acuerdo_actual, obtener_sesion_activa, socio_en_grupo } from '../utils/validaciones';
@@ -30,6 +31,34 @@ export const get_multas_activas_por_grupo = async (req, res) => {
 
         console.log(error);
         return res.status(500).json({ code: 500, message: 'Error en el servidor' });
+    }
+}
+
+export const multas_sesion_socio = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    const { id_socio_actual } = req;
+    // Validar que haya una sesion activa
+    const sesionActual = await obtenerSesionActual(Grupo_id);
+
+    try {
+        //Sacar el nombre del grupo
+        let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
+        const [nombre] = await db.query(query, Grupo_id);
+        //Devolver el Sesion_id y la Fecha
+        let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Sesion_id = ?";
+        const [sesion] = await db.query(query2, sesionActual.Sesion_id);
+        //Multas generadas en esa sesion
+        let query3 = "SELECT Multa_id, Monto_multa, Descripcion FROM multas WHERE Sesion_id = ? AND Socio_id = ? AND Status = 0";
+        const [multasG] = await db.query(query3, [sesionActual.Sesion_id, id_socio_actual]);
+        //Total de multas pagadas en esa sesion
+        let query4 = "SELECT Multa_id, Monto_multa, Descripcion FROM multas WHERE Sesion_id = ? AND Socio_id = ? AND Status = 1";
+        const [multasP] = await db.query(query4, [sesionActual.Sesion_id, id_socio_actual]);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesion: sesion, multasG: multasG, MultasP: multasP });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
     }
 }
 
