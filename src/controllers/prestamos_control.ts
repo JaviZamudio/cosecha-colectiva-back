@@ -184,3 +184,22 @@ export const pagar_prestamos = async (req: AdminRequest<PayloadPagarPrestamos>, 
         con.release();
     }
 }
+
+export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    const { id_socio_actual } = req;
+    // Validar que haya una sesion activa
+    const sesionActual = await obtenerSesionActual(Grupo_id);
+
+    try {
+        //Total de prestamos no pagados de un socio
+        let query3 = "SELECT prestamos.Prestamo_id, prestamos.Fecha_inicial AS Fecha, (prestamos.Interes_generado - prestamos.Interes_pagado) AS Interes, prestamos.Monto_prestamo AS Total, prestamos.Monto_pagado AS Pagado FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?;";
+        const [prestamos] = await db.query(query3, [id_socio_actual, Grupo_id]);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', prestamos : prestamos});
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
