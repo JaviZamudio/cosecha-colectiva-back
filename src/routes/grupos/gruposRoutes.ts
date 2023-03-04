@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { crear_grupo } from "../../controllers/grupos_control";
-import { authSocio } from "../../middleware/auth";
+import { crear_grupo, get_info_grupo } from "../../controllers/grupos_control";
+import { authSocio, authSocioGrupo } from "../../middleware/auth";
 import { sociosRoutes } from "./socios/sociosRoutes";
 import { acuerdosRoutes } from "./acuerdos/acuerdosRoutes";
 import { multasRoutes } from "./multas/multasRoutes";
@@ -12,6 +12,8 @@ const router = Router({ mergeParams: true });
 
 // Crear un grupo
 router.post("/", authSocio, crear_grupo);
+// Crear un grupo
+router.get("/:Grupo_id", authSocioGrupo, get_info_grupo);
 
 // Sub-Recursos
 router.use("/:Grupo_id/acuerdos", acuerdosRoutes);
