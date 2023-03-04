@@ -443,21 +443,22 @@ export const modificar_socio = async (req: SocioRequest<any>, res: Response) => 
 
 export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = Number(req.id_grupo_actual);
-    // Validar que haya una sesion activa
-    const sesionActual = await obtenerSesionActual(Grupo_id);
-    const acuerdo = await obtenerAcuerdoActual(Grupo_id);
-
+    
     try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+        const acuerdo = await obtenerAcuerdoActual(Grupo_id);
+
         //Total de ganancias que puede retirar un socio
-        let query3 = `SELECT ganancias.Socio_id, socios.Nombres, socios.Apellidos, SUM(ganancias.Monto_ganancia) as Ganancias
+        let query = `SELECT ganancias.Socio_id, socios.Nombres, socios.Apellidos, SUM(ganancias.Monto_ganancia) as Ganancias
         FROM ganancias
         JOIN socios ON socios.Socio_id = ganancias.Socio_id
         JOIN sesiones ON sesiones.Sesion_id = ganancias.Sesion_id
         WHERE sesiones.Grupo_id = ? AND ganancias.Entregada = 0 AND sesiones.Fecha <= (SELECT Fecha FROM sesiones WHERE Tipo_sesion = 1 AND Grupo_id = ? ORDER BY Sesion_id DESC LIMIT 1)
         group by ganancias.Socio_id`;
-        const [ganancias] = await db.query(query3, [Grupo_id, Grupo_id]);
+        const [ganancias] = await db.query(query, [Grupo_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', ganancias : ganancias});
+        return res.status(200).json({ code: 200, message: 'Ganancias obtenidas', data : ganancias});
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
