@@ -73,7 +73,7 @@ export const authAdmin = async (req: AdminRequest<any>, res, next) => {
 }
 
 /**
- * Middleware para verificar el token de acceso de un socio administrador de un grupo.
+ * Middleware para verificar el token de acceso de un socio administrador de un grupo. // TODO: corregir
  * Agrega al req, el id del socio actual y el id del grupo.
  * 
  * @returns respuesta con codigo 401 si el token no es válido o no hay un token.
