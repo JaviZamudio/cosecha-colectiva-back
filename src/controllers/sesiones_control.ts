@@ -281,11 +281,40 @@ export const recoger_firma = async (req, res) => {
             });
         })
 
+        // La imagen es una imagen png codificada como base 64, por lo que hay que decodificarla
+        // Pegar el texto completo Aqui: https://base64.guru/converter/decode/image
+
         // en la tabla asistencias, en la fila del socio y la sesion actual, poner la direccion de la firma para poder acceder a ella
         let query = "UPDATE asistencias SET Firma = ? WHERE Socio_id = ? AND Sesion_id = ?";
         await db.query(query, [params.Key, Socio_id, sesionActual.Sesion_id]);
 
         return res.json({ code: 200, message: 'Firma subida' }).status(200);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+export const get_firma = async (req, res) => {
+    const { id_grupo_actual } = req;
+    const { Socio_id, Sesion_id } = req.params;
+
+    try {
+        // Verificar que el socio existe
+        const socio = await existe_socio(Socio_id);
+        // Verificar que el socio pertenezca al grupo
+        await socio_en_grupo(socio.Socio_id, id_grupo_actual!);
+
+        const params: any = {
+            Bucket: aws_bucket_name,
+            Key: `firmas/${Sesion_id}/${Socio_id}.png`,
+        }
+
+        const data = await s3.getObject(params).promise();
+        console.log(data);
+        console.log(data.Body?.toString());
+
+        return res.json({ code: 200, message: 'Firma obtenida', data: data.Body?.toString() }).status(200);
     } catch (error) {
         const { code, message } = getCommonError(error);
         return res.json({ code, message }).status(code);
