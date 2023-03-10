@@ -1,14 +1,16 @@
 import { OkPacket } from 'mysql2';
 import db from '../config/database';
+import { obtenerSesionActual } from '../services/Sesiones.services';
 import { AdminRequest } from '../types/misc';
 import { getCommonError } from '../utils/utils';
 import { existe_grupo, campos_incompletos, existe_socio, catch_common_error, existe_multa, obtener_acuerdo_actual, obtener_sesion_activa, socio_en_grupo } from '../utils/validaciones';
 
 
 export const get_multas_activas_por_grupo = async (req, res) => {
-    const { Grupo_id } = req.body;
+    const Grupo_id = req.params.Grupo_id;
+    const { Socio_id } = req.body;
 
-    if (!Grupo_id) {
+    if (!Grupo_id || !Socio_id) {
         return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
     }
 
@@ -16,8 +18,9 @@ export const get_multas_activas_por_grupo = async (req, res) => {
         // Verificar que el grupo existe
         const { } = await existe_grupo(Grupo_id)
 
-        const query = "SELECT * FROM multas WHERE Grupo_id = ? and Status = 0 order by Socio_id, Sesion_id";
-        const [multas] = await db.query(query, [Grupo_id]);
+
+        const query = "SELECT multas.Multa_id, multas.Monto_multa, multas.Descripcion, socios.Nombres, socios.Apellidos, sesiones.Fecha FROM multas INNER JOIN socios ON socios.Socio_id = multas.Socio_id INNER JOIN sesiones ON sesiones.Sesion_id = multas.Sesion_id WHERE sesiones.Grupo_id = ? AND multas.Socio_id = ? AND multas.`Status` = 0 order by multas.Socio_id, multas.Sesion_id;";
+        const [multas] = await db.query(query, [Grupo_id, Socio_id]);
 
         return res.json({ code: 200, message: 'Multas obtenidas', data: multas }).status(200);
     } catch (error) {
@@ -28,6 +31,34 @@ export const get_multas_activas_por_grupo = async (req, res) => {
 
         console.log(error);
         return res.status(500).json({ code: 500, message: 'Error en el servidor' });
+    }
+}
+
+export const multas_sesion_socio = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    const { id_socio_actual } = req;
+    // Validar que haya una sesion activa
+    const sesionActual = await obtenerSesionActual(Grupo_id);
+
+    try {
+        //Sacar el nombre del grupo
+        let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
+        const [nombre] = await db.query(query, Grupo_id);
+        //Devolver el Sesion_id y la Fecha
+        let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Sesion_id = ?";
+        const [sesion] = await db.query(query2, sesionActual.Sesion_id);
+        //Multas generadas en esa sesion
+        let query3 = "SELECT Multa_id, Monto_multa, Descripcion FROM multas WHERE Sesion_id = ? AND Socio_id = ? AND Status = 0";
+        const [multasG] = await db.query(query3, [sesionActual.Sesion_id, id_socio_actual]);
+        //Total de multas pagadas en esa sesion
+        let query4 = "SELECT Multa_id, Monto_multa, Descripcion FROM multas WHERE Sesion_id = ? AND Socio_id = ? AND Status = 1";
+        const [multasP] = await db.query(query4, [sesionActual.Sesion_id, id_socio_actual]);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesion: sesion, multasG: multasG, MultasP: multasP });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
     }
 }
 

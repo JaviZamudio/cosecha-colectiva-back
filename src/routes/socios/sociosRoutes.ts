@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { register, login, unirse_grupo, recuperar_password, cambiar_password, cambiar_pregunta_seguridad, enviar_grupos_socio, validar_pregunta_seguridad, enviar_socio, modificar_socio } from "../../controllers/socios_control";
+import { buscar_entidad } from "../../controllers/entidadesFedeartivas_control";
 import { authSocio } from "../../middleware/auth";
 
 const router = Router({ mergeParams: true });
 
 //Informacion de pantalla mis grupos
 router.get("/grupos", authSocio, enviar_grupos_socio);
+//Informacion de entidades federativas para registrar socio
+router.get("/entidades/:codigoPostal", buscar_entidad);
 // Registrar un socio
 router.post("/", register);
 // Login
