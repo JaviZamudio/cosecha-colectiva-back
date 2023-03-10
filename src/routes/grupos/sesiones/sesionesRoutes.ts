@@ -18,6 +18,6 @@ router.post("/finalizar", authAdmin, finalizar_sesion);
 // Agendar sesion
 router.post("/agendar", authAdmin, agendar_sesion);
 // Recoger firma de usuario en la sesion
-router.post("/:Socio_id/firma", authAdmin, recoger_firma);
+router.post("/socios/:Socio_id/firma", authAdmin, recoger_firma);
 
 export { router as sesionesRoutes };
