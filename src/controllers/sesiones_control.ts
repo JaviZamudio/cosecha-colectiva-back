@@ -4,7 +4,7 @@ import { actualizar_intereses, disminuir_sesiones, obtenerSesionActual, registra
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
-import { aws_bucket_name } from "../config/config";
+import { aws_access_key_id, aws_bucket_name, aws_region, aws_secret_access_key } from "../config/config";
 import { s3 } from "../config/aws";
 
 //crear nueva sesion
