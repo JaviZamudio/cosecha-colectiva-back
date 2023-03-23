@@ -153,6 +153,7 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
     // TODO: Subir las imagenes de las firmas de los socios a AWS S3
 
     const { id_grupo_actual } = req;
+    const { Lugar, Fecha } = req.body;
 
     const con = await db.getConnection();
     try {
@@ -160,8 +161,8 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
 
         const sesionActual = await obtenerSesionActual(id_grupo_actual!);
 
-        let query = "UPDATE sesiones SET Activa = 0 WHERE Sesion_id = ?";
-        await con.query(query, sesionActual.Sesion_id);
+        let query = "UPDATE sesiones SET Lugar_prox_reunion = ?, Fecha_prox_reunion = ?, Activa = 0 WHERE Sesion_id = ?";
+        await con.query(query, [Lugar, Fecha, sesionActual.Sesion_id]);
 
         asignarGananciasSesion(id_grupo_actual!, { sesionActual }, con);
 
