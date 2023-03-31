@@ -67,7 +67,8 @@ export const obtener_prestamos_ampliables = async (Grupo_id: number, Socio_id: n
         AND prestamos.Estatus_prestamo = 0 -- Que no estén pagados
         AND grupos.Grupo_id = ? -- De cierto grupo
         AND prestamos.Socio_id = ? -- De cierto socio
-        AND acuerdos.Ampliacion_prestamos = 1 -- Que los acuerdos lo permitan;
+        AND acuerdos.Ampliacion_prestamos = 1 -- Que los acuerdos lo permitan
+        AND acuerdos.Status = 1 -- Que los acuerdos estén vigentes
     `;
 
     return (await db.query(query, [Grupo_id, Socio_id]) as [Prestamo[], any])[0];

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { get_prestamos_socio_sesion, pagar_prestamos } from "../../../controllers/prestamos_control";
+import { get_prestamos_socio_sesion, info_prestamos_general, pagar_prestamos } from "../../../controllers/prestamos_control";
 import { authAdmin, authSocio } from "../../../middleware/auth";
 import { authSocioGrupo } from "../../../middleware/auth";
 
@@ -14,5 +14,7 @@ router.patch("/", authAdmin, pagar_prestamos);
 
 // Obtener la información de un usuario sobre sus prestamos en una sesión
 router.patch("/", authSocio, get_prestamos_socio_sesion);
+// Obtener Info Prestamos del grupo
+router.get("/", authAdmin, info_prestamos_general);
 
 export { router as prestamosRoutes };

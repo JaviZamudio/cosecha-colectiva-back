@@ -270,7 +270,7 @@ export const actualizaPreguntaSocio = async (preguntaSocio: PreguntaSocio, con?:
 }
 
 /**
- * Funcion para obtener objeto una relacion grupo-socio
+ * Funcion para obtener objeto una relacion grupo-socio. Para sabe
  * @param Socio_id El id del socio
  * @param Grupo_id El id del grupo
  * @returns Un objeto de tipo GrupoSocio

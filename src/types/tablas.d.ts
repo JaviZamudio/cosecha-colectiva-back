@@ -3,7 +3,7 @@ interface Acuerdo {
     Grupo_id: number,
     Fecha_acuerdos: string,
     Fecha_acuerdos_fin: string,
-    Status: 1 | 0,
+    Status: 1 | 0, // 1 = activo, 0 = inactivo
     Periodo_reuniones: number, // en semanas
     Periodo_cargos: string,
     Limite_inasistencias: string,
@@ -12,7 +12,7 @@ interface Acuerdo {
     Tasa_interes: string,
     Limite_credito: number,
     Porcentaje_fondo_comun: string,
-    Creditos_simultaneos: string,
+    Creditos_simultaneos: number,
     Interes_morosidad: string,
     Ampliacion_prestamos: 0 | 1,
     Interes_ampliacion: number | null,

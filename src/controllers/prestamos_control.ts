@@ -1,10 +1,13 @@
 import db from "../config/database";
-import { pagarPrestamo, generar_prestamo } from "../services/Prestamos.services";
+import { pagarPrestamo, generar_prestamo, obtener_prestamos_ampliables, obtenerPrestamosVigentes } from "../services/Prestamos.services";
 import { formatearFecha, getCommonError } from "../utils/utils";
 import { obtener_caja_sesion, obtenerSesionActual, obtener_sesion } from "../services/Sesiones.services";
 import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
 import { prestamos_multiples, limite_credito, campos_incompletos, Fecha_actual } from "../utils/validaciones";
 import { AdminRequest } from "../types/misc";
+import { obtenerSociosGrupo } from "../services/Grupos.services";
+import { RowDataPacket } from "mysql2";
+import { existeSocio } from "../services/Socios.services";
 
 export const enviar_socios_prestamo = async (req, res) => {
     const { Grupo_id } = req.body;
@@ -228,7 +231,7 @@ export const pagar_prestamos = async (req: AdminRequest<PayloadPagarPrestamos>, 
 export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = Number(req.id_grupo_actual);
     const Socio_id = Number(req.params.Socio_id);
-    
+
     try {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
@@ -237,7 +240,53 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         let query = "SELECT prestamos.Prestamo_id, prestamos.Fecha_inicial AS Fecha, (prestamos.Interes_generado - prestamos.Interes_pagado) AS Interes, prestamos.Monto_prestamo AS Total, prestamos.Monto_pagado AS Pagado FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?;";
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Prestamos obtenidos', data : prestamos});
+        return res.status(200).json({ code: 200, message: 'Prestamos obtenidos', data: prestamos });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+// controlador para obtener informacion de los prestamos de todos los socios
+// informacion por socio: id, nombre, # prestamos vigentes, # prestamos ampliables, limite de prestamos ✅
+export const info_prestamos_general = async (req: AdminRequest<any>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        // Obtener todos los socios del grupo
+        const sociosGrupo = await obtenerSociosGrupo(Grupo_id);
+
+        // Obtener la informacion de los acuerdos actuales
+        const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
+
+        const promises = sociosGrupo.map(async socioGrupo => {
+            let query = `SELECT COUNT(*) AS Prestamos_vigentes FROM prestamos 
+            JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
+            WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?`;
+
+            // const { Prestamos_vigentes } = (await db.query(query, [socioGrupo.Socio_id, Grupo_id]) as RowDataPacket[])[0] as { Prestamos_vigentes: number };
+            const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, socioGrupo.Socio_id);
+
+            const Prestamos_ampliables = await obtener_prestamos_ampliables(Grupo_id, socioGrupo.Socio_id);
+
+            const socio = await existeSocio(socioGrupo.Socio_id);
+
+            return {
+                Socio_id: socioGrupo.Socio_id,
+                Nombre: socio.Nombres,
+                Prestamos_vigentes: Prestamos_vigentes.length,
+                Prestamos_ampliables: Prestamos_ampliables.length,
+                Limite_prestamos
+            }
+        });
+
+        const data = await Promise.all(promises);
+
+        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
