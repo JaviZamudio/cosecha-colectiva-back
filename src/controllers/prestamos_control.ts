@@ -1,7 +1,7 @@
 import db from "../config/database";
 import { pagarPrestamo, generar_prestamo } from "../services/Prestamos.services";
 import { formatearFecha, getCommonError } from "../utils/utils";
-import { obtener_caja_sesion, obtenerSesionActual } from "../services/Sesiones.services";
+import { obtener_caja_sesion, obtenerSesionActual, obtener_sesion } from "../services/Sesiones.services";
 import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
 import { prestamos_multiples, limite_credito, campos_incompletos, Fecha_actual } from "../utils/validaciones";
 import { AdminRequest } from "../types/misc";
@@ -30,15 +30,14 @@ interface PayloadCrearPrestamos {
     Prestamo_original_id: number | null;
 }
 export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, res) => {
-    const { Monto_prestamo, Num_sesiones, Observaciones, Estatus_ampliacion, Prestamo_original_id } = req.body;
+    const { Monto_prestamo, Num_sesiones, Observaciones } = req.body;
     const Grupo_id = Number(req.params.Grupo_id);
     const Socio_id = Number(req.params.Socio_id);
 
-    if (campos_incompletos({ Monto_prestamo, Num_sesiones, Observaciones, Estatus_ampliacion, Prestamo_original_id, Grupo_id, Socio_id })) {
+    if (campos_incompletos({ Monto_prestamo, Num_sesiones, Observaciones, Grupo_id, Socio_id })) {
         return res.status(400).json({ code: 400, message: 'Campos incompletos' });
     }
 
-    console.log("este es el id: " + Prestamo_original_id);
     
     const con = await db.getConnection();
     try {
@@ -51,7 +50,82 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
             Num_sesiones,
             Observaciones,
             Acuerdos_id: acuerdoActual.Acuerdo_id!,
-            Estatus_ampliacion,
+            Estatus_ampliacion : 0,
+            Prestamo_original_id : null,
+            Estatus_prestamo: 0,
+            Fecha_final: formatearFecha(new Date(Date.now() + (Num_sesiones * acuerdoActual.Periodo_reuniones * 7 * 24 * 60 * 60 * 1000))),
+            Fecha_inicial: Fecha_actual(),
+            Interes_generado: 0,
+            Interes_pagado: 0,
+            Monto_pagado: 0,
+            Sesion_id: sesionActual.Sesion_id!,
+            Sesiones_restantes: Num_sesiones,
+            Socio_id: Socio_id,
+        }
+
+        await con.beginTransaction();
+
+        // Validaciones
+        //Verificar si se permiten prestamos multiples
+        //si no, verificar si no tiene ningun otro prestamo
+        //verificar cantidad maxima que puede pedir el socio (cantidad de dinero en acciones * Limite credito de acuerdos)
+        //Calcular el monto acumulado en prestamos vigentes (si esta cantidad rebasa su limite no puede proceder)
+        //Para hacer las validaciones anteriores necesitamos los datos del socio
+        let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? and Grupo_id = ?";
+        const [socio] = await db.query(query, [Socio_id, Grupo_id]) as [GrupoSocio[], any];
+        let Lista_socios_validacion = await prestamos_multiples(Grupo_id, [socio]);
+        if (!Lista_socios_validacion[0].puede_pedir) {
+            return res.status(400).json({ code: 400, message: "El socio " + Lista_socios_validacion[0].Nombres + " " + Lista_socios_validacion[0].message });
+        }
+        //Verificar que la cantidad solicitada sea menor a su limite
+        if (Monto_prestamo > Lista_socios_validacion[0].Limite_credito_disponible!) {
+            return res.status(400).json({ code: 400, message: "La cantidad solicitada rebsasa su limite de credito" });
+        }
+        //Verificar si hay esa cantidad disponible en la caja
+        //Obtener la caja de la sesion activa
+        let caja = await obtener_caja_sesion(sesionActual.Sesion_id!);
+        if (caja < Monto_prestamo) {
+            return res.status(400).json({ code: 400, message: "No hay suficiente cantidad en la caja" });
+        }
+        campos_prestamo.Prestamo_original_id = null;
+        // Crear Registro en prestamos
+        await generar_prestamo(Grupo_id, campos_prestamo, con);
+        // return res.status(200).json({ code: 200, message: "Prestamo creado" });
+        await con.commit();
+        // return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
+        return res.status(200).json({ code: 200, message: "Listo (:" });
+    } catch (error) {
+        console.log('holiwi')
+        await con.rollback();
+        console.log("Este es el error: " + error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    } finally {
+        con.release();
+    }
+}
+
+export const ampliar_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, res) => {
+    const { Monto_prestamo, Num_sesiones, Observaciones, Prestamo_original_id } = req.body;
+    const Grupo_id = Number(req.params.Grupo_id);
+    const Socio_id = Number(req.params.Socio_id);
+
+    if (campos_incompletos({ Monto_prestamo, Num_sesiones, Observaciones, Prestamo_original_id, Grupo_id, Socio_id })) {
+        return res.status(400).json({ code: 400, message: 'Campos incompletos' });
+    }
+    
+    const con = await db.getConnection();
+    try {
+
+        const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        const campos_prestamo: Prestamo = {
+            Monto_prestamo,
+            Num_sesiones,
+            Observaciones,
+            Acuerdos_id: acuerdoActual.Acuerdo_id!,
+            Estatus_ampliacion: 1,
             Prestamo_original_id,
             Estatus_prestamo: 0,
             Fecha_final: formatearFecha(new Date(Date.now() + (Num_sesiones * acuerdoActual.Periodo_reuniones * 7 * 24 * 60 * 60 * 1000))),
@@ -66,76 +140,45 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
 
         await con.beginTransaction();
 
-        // Verificar que el socio pueda generar un prestamo normal
-        if (!Estatus_ampliacion) {
-            // Validaciones
-            //Verificar si se permiten prestamos multiples
-            //si no, verificar si no tiene ningun otro prestamo
-            //verificar cantidad maxima que puede pedir el socio (cantidad de dinero en acciones * Limite credito de acuerdos)
-            //Calcular el monto acumulado en prestamos vigentes (si esta cantidad rebasa su limite no puede proceder)
-
-            //Para hacer las validaciones anteriores necesitamos los datos del socio
-            let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? and Grupo_id = ?";
-            const [socio] = await db.query(query, [Socio_id, Grupo_id]) as [GrupoSocio[], any];
-            let Lista_socios_validacion = await prestamos_multiples(Grupo_id, [socio]);
-
-            if (!Lista_socios_validacion[0].puede_pedir) {
-                return res.status(400).json({ code: 400, message: "El socio " + Lista_socios_validacion[0].Nombres + " " + Lista_socios_validacion[0].message });
-            }
-            //Verificar que la cantidad solicitada sea menor a su limite
-            if (Monto_prestamo > Lista_socios_validacion[0].Limite_credito_disponible!) {
-                return res.status(400).json({ code: 400, message: "La cantidad solicitada rebsasa su limite de credito" });
-            }
-            //Verificar si hay esa cantidad disponible en la caja
-            //Obtener la caja de la sesion activa
-            let caja = await obtener_caja_sesion(sesionActual.Sesion_id!);
-            if (caja < Monto_prestamo) {
-                return res.status(400).json({ code: 400, message: "No hay suficiente cantidad en la caja" });
-            }
-
-            campos_prestamo.Prestamo_original_id = null;
-            // Crear Registro en prestamos
-            await generar_prestamo(Grupo_id, campos_prestamo, con);
-            // return res.status(200).json({ code: 200, message: "Prestamo creado" });
-        } else {
-            // Verificar que el socio pueda generar un prestamo ampliado
-            if (!acuerdoActual.Ampliacion_prestamos) {
-                return res.status(400).json({ code: 400, message: "No se permiten ampliar prestamos" })
-            }
-
-            console.log("este es el id2: " + Prestamo_original_id);
-            //Verificar que el prestamo no haya sido ampliado anteriormente
-            let query_pres_am = "SELECT * FROM prestamos WHERE Prestamo_original_id = ?  OR Prestamo_id = ? AND Estatus_ampliacion = 1"
-            const [prestamo_amp] = await db.query(query_pres_am, [Prestamo_original_id, Prestamo_original_id]) as [Prestamo[], any];
-
-            if (prestamo_amp.length !== 0) {
-                return res.status(400).json({ code: 400, message: "Este prestamo ya fue ampliado una vez" });
-            }
-
-            let query_prestamo = "SELECT * FROM prestamos WHERE Prestamo_id = ? "
-            const [prestamo_original] = await db.query(query_prestamo, [Prestamo_original_id]) as [Prestamo[], any];
-
-            //Asegurarse de que el monto sea igual o mayor a la cantidad faltante de pagar que el prestamo original
-            let faltante = (prestamo_original[0].Monto_prestamo - prestamo_original[0].Monto_pagado) + (prestamo_original[0].Interes_generado - prestamo_original[0].Interes_pagado);
-            if (Monto_prestamo < faltante) {
-                return res.status(400).json({ code: 400, message: "La cantidad no cubre el faltante del prestamo original" });
-            }
-
-            // let dinero_extra = Monto_prestamo - faltante; //Preguntar que si no hay un espacio en la pantalla para ver lo que en realidad se da en dinero fisico
-            //Pagar el prestamo original
-            await pagarPrestamo(Prestamo_original_id!, faltante, con);
-
-            //Asegurarse de que no rebase su limite de credito
-            let limite = limite_credito(Socio_id, Grupo_id, null, null, null);
-            if (limite[0] === 0) {
-                // return res.status(400).json({ code: 400, message: "La cantidad solicitada rebasa su limite de credito" });
-                throw "La cantidad solicitada rebasa su limite de credito";
-            }
-
-            // Generar prestamo ampliado
-            await generar_prestamo(Grupo_id, campos_prestamo, con);
+        // Verificar que el socio pueda generar un prestamo ampliado
+        if (!acuerdoActual.Ampliacion_prestamos) {
+            return res.status(400).json({ code: 400, message: "No se permiten ampliar prestamos" })
         }
 
+        //Verificar que el prestamo no haya sido ampliado anteriormente
+        let query_pres_am = "SELECT * FROM prestamos WHERE Prestamo_original_id = ?  OR Prestamo_id = ? AND Estatus_ampliacion = 1"
+        const [prestamo_amp] = await db.query(query_pres_am, [Prestamo_original_id, Prestamo_original_id]) as [Prestamo[], any];
+
+        if (prestamo_amp.length !== 0) {
+            return res.status(400).json({ code: 400, message: "Este prestamo ya fue ampliado una vez" });
+        }
+
+        let query_prestamo = "SELECT * FROM prestamos WHERE Prestamo_id = ? ";
+        const [prestamo_original] = await db.query(query_prestamo, [Prestamo_original_id]) as [Prestamo[], any];
+        //Asegurarse de que el monto sea igual o mayor a la cantidad faltante de pagar que el prestamo original
+        let faltante = (prestamo_original[0].Monto_prestamo - prestamo_original[0].Monto_pagado) + (prestamo_original[0].Interes_generado - prestamo_original[0].Interes_pagado);
+        
+        if (Monto_prestamo < faltante) {
+            return res.status(400).json({ code: 400, message: "La cantidad no cubre el faltante del prestamo original" });
+        }
+
+        let dinero_extra = Monto_prestamo - faltante; //Preguntar que si no hay un espacio en la pantalla para ver lo que en realidad se da en dinero fisico
+        
+        //Asegurarse de que no rebase su limite de credito
+        let limite = limite_credito(Socio_id, Grupo_id, null, null, null);
+        if (limite[0] === 0) {
+            // return res.status(400).json({ code: 400, message: "La cantidad solicitada rebasa su limite de credito" });
+            throw "La cantidad solicitada rebasa su limite de credito";
+        }
+        //Obtener la caja de la sesion activa
+        let caja = await obtener_caja_sesion(sesionActual.Sesion_id!);
+        if (caja < dinero_extra) {
+            return res.status(400).json({ code: 400, message: "No hay suficiente cantidad en la caja" });
+        }
+        //Pagar el prestamo original
+        await pagarPrestamo(Prestamo_original_id!, faltante, con);
+        // Generar prestamo ampliado
+        await generar_prestamo(Grupo_id, campos_prestamo, con);
         await con.commit();
         // return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
         return res.status(200).json({ code: 200, message: "Listo (:" });
@@ -198,6 +241,84 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
 
         return res.status(200).json({ code: 200, message: 'Prestamos obtenidos', data : prestamos});
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+export const get_prestamos_socio_sesion = async (req: AdminRequest<Grupo>, res) => {
+    // const Socio_id = Number(req.id_socio_actual);
+    const Sesion_id = Number(req.params.Sesion_id);
+    const Prestamo_id = Number(req.params.Prestamo_id);
+
+    if(!Sesion_id || !Prestamo_id){
+        console.log(Sesion_id);
+        console.log(Prestamo_id);
+        return res.status(400).json({ code: 400, message: 'Campos incompletos' });
+    }
+    
+    try {
+
+        //Pagó esta sesión
+        let query1 = "SELECT SUM(t.Cantidad_movimiento) as pagoEstaSesion FROM transaccion_prestamos tp INNER JOIN transacciones t ON tp.Transaccion_id = t.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id = ?";
+        const [pago_sesion] = await db.query(query1, [Prestamo_id, Sesion_id]);
+
+        //Interes acumulado e Interes generado en esta sesion
+        let query2 = "SELECT SUM(Monto_interes) - (SELECT SUM(tp.Monto_abono_interes) FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id < ?) as interesAcumulado, Monto_interes as interesGeneradoEstaSesion FROM interes_prestamo WHERE Prestamo_id = ? AND Sesion_id < ?";
+        const [intereses] = await db.query(query2, [Prestamo_id, Sesion_id, Prestamo_id, Sesion_id]);
+
+        //Interes Total
+        let interesTotal = intereses[0].interesAcumulado + intereses[0].interesGeneradoEstaSesion;
+
+        //Interes Pagado esta sesion
+        let query3 = "SELECT SUM(tp.Monto_abono_interes) as interesPagado FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id = ?";
+        const [interes_pagado] = await db.query(query3, [Prestamo_id, Sesion_id]);
+
+        //Interes Restante
+        let interesRestante = interesTotal - interes_pagado[0].interesPagado;
+
+        //Dinero Restante
+
+        //Monto oiriginal
+        let query4 = "SELECT Monto_prestamo, Fecha_inicial FROM prestamos WHERE Prestamo_id = ?";
+        const [prestamo] = await db.query(query4, [Prestamo_id]);
+
+        //Monto antes del pago de hoy
+        let query5 = "SELECT ? - SUM(tp.Monto_abono_prestamo) as montoAntesPagoHoy FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id < ?";
+        const [montoAntes] = await db.query(query5, [prestamo[0].Monto_prestamo, Prestamo_id, Sesion_id]);
+
+        //Monto Restante
+
+        //Dinero Total Pagado
+        let query6 = "SELECT SUM(tp.Monto_abono_prestamo) as montoTotalPagado FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id <= ?";
+        const [montoTotalPagado] = await db.query(query6, [Prestamo_id, Sesion_id]);
+
+        //Interes Total Pagado
+        let query7 = "SELECT SUM(tp.Monto_abono_interes) as interesTotalPagado FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id <= ?";
+        const [interesTotalPagado] = await db.query(query7, [Prestamo_id, Sesion_id]);
+
+        return res.status(200).json({ code: 200, message: 'Datos prestamo obtenido', 
+            pagosEstaSesion : {
+                pagoEstaSesion: pago_sesion[0].pagoEstaSesion,
+                interesAcumulado: intereses[0].interesAcumulado,
+                interesGeneradoEstaSesion: intereses[0].interesGeneradoEstaSesion,
+                interesTotal: interesTotal,
+                interesRestante: interesRestante,
+                dineroRestante: pago_sesion[0].pagoEstaSesion - interesTotal,
+                montoAntesPagoHoy: montoAntes[0].montoAntesPagoHoy,
+                MontoRestante: montoAntes[0].montoAntesPagoHoy - (pago_sesion[0].pagoEstaSesion - interesTotal),
+            },
+            informacionGeneral:{
+                inicioDelPrestamo: prestamo[0].Fecha_inicial,
+                dineroTotalPagado: montoTotalPagado[0].montoTotalPagado,
+                interesTotalPagado: interesTotalPagado[0].interesTotalPagado,
+                dineroRestante: montoTotalPagado[0].montoTotalPagado - interesTotalPagado[0].interesTotalPagado,
+                montoOriginal: prestamo[0].Monto_prestamo,
+                montoTotalRestante: prestamo[0].Monto_prestamo - (montoTotalPagado[0].montoTotalPagado - interesTotalPagado[0].interesTotalPagado),
+            }
+        });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
