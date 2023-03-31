@@ -90,10 +90,8 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
         campos_prestamo.Prestamo_original_id = null;
         // Crear Registro en prestamos
         await generar_prestamo(Grupo_id, campos_prestamo, con);
-        // return res.status(200).json({ code: 200, message: "Prestamo creado" });
         await con.commit();
-        // return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
-        return res.status(200).json({ code: 200, message: "Listo (:" });
+        return res.status(200).json({ code: 200, message: "Prestamo creado" });
     } catch (error) {
         console.log('holiwi')
         await con.rollback();
@@ -180,8 +178,7 @@ export const ampliar_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>,
         // Generar prestamo ampliado
         await generar_prestamo(Grupo_id, campos_prestamo, con);
         await con.commit();
-        // return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
-        return res.status(200).json({ code: 200, message: "Listo (:" });
+        return res.status(200).json({ code: 200, message: "Ampliacion hecha" });
     } catch (error) {
         console.log('holiwi')
         await con.rollback();
