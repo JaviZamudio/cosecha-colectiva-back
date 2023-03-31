@@ -136,3 +136,55 @@ export const actualizar_intereses = async (Grupo_id: number) => {
     const query4 = "UPDATE prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id SET prestamos.Interes_generado = prestamos.Interes_generado + ((prestamos.Monto_prestamo*(acuerdos.Interes_ampliacion+acuerdos.Interes_morosidad))/100) WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 1 AND prestamos.Sesiones_restantes < 0 AND prestamos.Prestamo_original_id IS NOT NULL AND socios.`Status` = 1;";
     await db.query(query4, [Grupo_id]);
 }
+
+export const agregar_interes_prestamo = async (Grupo_id: number) => {
+    if (!Grupo_id) {
+        throw { code: 400, message: "Datos incompletos"};
+    }
+    //obtener sesion actual
+    let sesion = await obtenerSesionActual(Grupo_id);
+    
+    try{
+        //intereses normales --- Tasa_interes --- %
+        const query = "SELECT Prestamo_id, prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100) as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
+        let uno = (await db.query(query, [Grupo_id]))[0];
+        console.log(uno);
+        await Promise.all(JSON.parse(JSON.stringify(uno)).map(async (prestamo) => {
+            let ins1 = "INSERT INTO interes_prestamo (Prestamo_id, Sesion_id, Monto_interes, Tipo_interes) VALUES (?, ?, ?, ?)";
+            let res = await db.query(ins1, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 0])[0];
+            return res;
+        }));
+
+        //intereses morosidad --- Interes_morosidad --- %
+        const query2 = "SELECT Prestamo_id, prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Interes_morosidad)/100) as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes < 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
+        let dos = (await db.query(query2, [Grupo_id]))[0];
+        await Promise.all(JSON.parse(JSON.stringify(dos)).map(async (prestamo) => {
+            let ins2 = "INSERT INTO interes_prestamo (Prestamo_id, Sesion_id, Monto_interes, Tipo_interes) VALUES (?, ?, ?, ?)";
+            let res2 = await db.query(ins2, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 1])[0];
+            return res2;
+        }));
+
+        //intereses ampliacion --- Interes_ampliacion --- %
+        const query3 = "SELECT Prestamo_id, prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Interes_ampliacion)/100) as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 1 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NOT NULL AND socios.`Status` = 1;";
+        let tres = (await db.query(query3, [Grupo_id]))[0];
+        console.log(tres);
+        await Promise.all(JSON.parse(JSON.stringify(tres)).map(async (prestamo) => {
+            let ins3 = "INSERT INTO interes_prestamo (Prestamo_id, Sesion_id, Monto_interes, Tipo_interes) VALUES (?, ?, ?, ?)";
+            let res3 = await db.query(ins3, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 2])[0];
+            return res3;
+        }));
+
+        //intereses ampliacion con morosidad --- Interes_ampliacion + Interes_morosidad--- %
+        const query4 = "SELECT Prestamo_id, prestamos.Interes_generado + ((prestamos.Monto_prestamo*(acuerdos.Interes_ampliacion+acuerdos.Interes_morosidad))/100) as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 1 AND prestamos.Sesiones_restantes < 0 AND prestamos.Prestamo_original_id IS NOT NULL AND socios.`Status` = 1;";
+        let cuatro = (await db.query(query4, [Grupo_id]))[0];
+        console.log(cuatro);
+        await Promise.all(JSON.parse(JSON.stringify(cuatro)).map(async (prestamo) => {
+            let ins4 = "INSERT INTO interes_prestamo (Prestamo_id, Sesion_id, Monto_interes, Tipo_interes) VALUES (?, ?, ?, ?)";
+            let res4 = await db.query(ins4, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 3])[0];
+            return res4;
+        }));
+    }catch (error) {
+        const { code, message } = catch_common_error(error);
+        throw { code, message };
+    }
+}

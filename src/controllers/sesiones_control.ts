@@ -1,6 +1,6 @@
 import db from "../config/database";
 import { Fecha_actual, campos_incompletos, catch_common_error, obtener_sesion_activa, existe_socio, socio_en_grupo } from "../utils/validaciones";
-import { actualizar_intereses, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
+import { actualizar_intereses, agregar_interes_prestamo, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
@@ -61,6 +61,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         await registrar_asistencias(Grupo_id, Socios);
         await disminuir_sesiones(Grupo_id!);
         await actualizar_intereses(Grupo_id!);
+        await agregar_interes_prestamo(Grupo_id!);
         return res.json({ code: 200, message: 'Sesion creada y asistencias registradas' }).status(200);
     } catch (error) {
         console.log(error);
