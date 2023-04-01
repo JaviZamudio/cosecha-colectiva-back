@@ -7,7 +7,7 @@ import { prestamos_multiples, limite_credito, campos_incompletos, Fecha_actual }
 import { AdminRequest } from "../types/misc";
 import { obtenerSociosGrupo } from "../services/Grupos.services";
 import { RowDataPacket } from "mysql2";
-import { existeSocio } from "../services/Socios.services";
+import { existeSocio, obtenerLimiteCreditoDisponible } from "../services/Socios.services";
 
 export const enviar_socios_prestamo = async (req, res) => {
     const { Grupo_id } = req.body;
@@ -41,7 +41,7 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
         return res.status(400).json({ code: 400, message: 'Campos incompletos' });
     }
 
-    
+
     const con = await db.getConnection();
     try {
 
@@ -53,8 +53,8 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
             Num_sesiones,
             Observaciones,
             Acuerdos_id: acuerdoActual.Acuerdo_id!,
-            Estatus_ampliacion : 0,
-            Prestamo_original_id : null,
+            Estatus_ampliacion: 0,
+            Prestamo_original_id: null,
             Estatus_prestamo: 0,
             Fecha_final: formatearFecha(new Date(Date.now() + (Num_sesiones * acuerdoActual.Periodo_reuniones * 7 * 24 * 60 * 60 * 1000))),
             Fecha_inicial: Fecha_actual(),
@@ -114,7 +114,7 @@ export const ampliar_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>,
     if (campos_incompletos({ Monto_prestamo, Num_sesiones, Observaciones, Prestamo_original_id, Grupo_id, Socio_id })) {
         return res.status(400).json({ code: 400, message: 'Campos incompletos' });
     }
-    
+
     const con = await db.getConnection();
     try {
 
@@ -158,13 +158,13 @@ export const ampliar_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>,
         const [prestamo_original] = await db.query(query_prestamo, [Prestamo_original_id]) as [Prestamo[], any];
         //Asegurarse de que el monto sea igual o mayor a la cantidad faltante de pagar que el prestamo original
         let faltante = (prestamo_original[0].Monto_prestamo - prestamo_original[0].Monto_pagado) + (prestamo_original[0].Interes_generado - prestamo_original[0].Interes_pagado);
-        
+
         if (Monto_prestamo < faltante) {
             return res.status(400).json({ code: 400, message: "La cantidad no cubre el faltante del prestamo original" });
         }
 
         let dinero_extra = Monto_prestamo - faltante; //Preguntar que si no hay un espacio en la pantalla para ver lo que en realidad se da en dinero fisico
-        
+
         //Asegurarse de que no rebase su limite de credito
         let limite = limite_credito(Socio_id, Grupo_id, null, null, null);
         if (limite[0] === 0) {
@@ -264,10 +264,6 @@ export const info_prestamos_general = async (req: AdminRequest<any>, res) => {
         const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
 
         const promises = sociosGrupo.map(async socioGrupo => {
-            let query = `SELECT COUNT(*) AS Prestamos_vigentes FROM prestamos 
-            JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
-            WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?`;
-
             // const { Prestamos_vigentes } = (await db.query(query, [socioGrupo.Socio_id, Grupo_id]) as RowDataPacket[])[0] as { Prestamos_vigentes: number };
             const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, socioGrupo.Socio_id);
 
@@ -299,12 +295,12 @@ export const get_prestamos_socio_sesion = async (req: AdminRequest<Grupo>, res) 
     const Sesion_id = Number(req.params.Sesion_id);
     const Prestamo_id = Number(req.params.Prestamo_id);
 
-    if(!Sesion_id || !Prestamo_id){
+    if (!Sesion_id || !Prestamo_id) {
         console.log(Sesion_id);
         console.log(Prestamo_id);
         return res.status(400).json({ code: 400, message: 'Campos incompletos' });
     }
-    
+
     try {
 
         //Pagó esta sesión
@@ -345,8 +341,9 @@ export const get_prestamos_socio_sesion = async (req: AdminRequest<Grupo>, res) 
         let query7 = "SELECT SUM(tp.Monto_abono_interes) as interesTotalPagado FROM transaccion_prestamos tp INNER JOIN transacciones t ON t.Transaccion_id = tp.Transaccion_id WHERE tp.Prestamo_id = ? AND t.Sesion_id <= ?";
         const [interesTotalPagado] = await db.query(query7, [Prestamo_id, Sesion_id]);
 
-        return res.status(200).json({ code: 200, message: 'Datos prestamo obtenido', 
-            pagosEstaSesion : {
+        return res.status(200).json({
+            code: 200, message: 'Datos prestamo obtenido',
+            pagosEstaSesion: {
                 pagoEstaSesion: pago_sesion[0].pagoEstaSesion,
                 interesAcumulado: intereses[0].interesAcumulado,
                 interesGeneradoEstaSesion: intereses[0].interesGeneradoEstaSesion,
@@ -356,7 +353,7 @@ export const get_prestamos_socio_sesion = async (req: AdminRequest<Grupo>, res) 
                 montoAntesPagoHoy: montoAntes[0].montoAntesPagoHoy,
                 MontoRestante: montoAntes[0].montoAntesPagoHoy - (pago_sesion[0].pagoEstaSesion - interesTotal),
             },
-            informacionGeneral:{
+            informacionGeneral: {
                 inicioDelPrestamo: prestamo[0].Fecha_inicial,
                 dineroTotalPagado: montoTotalPagado[0].montoTotalPagado,
                 interesTotalPagado: interesTotalPagado[0].interesTotalPagado,
@@ -365,6 +362,43 @@ export const get_prestamos_socio_sesion = async (req: AdminRequest<Grupo>, res) 
                 montoTotalRestante: prestamo[0].Monto_prestamo - (montoTotalPagado[0].montoTotalPagado - interesTotalPagado[0].interesTotalPagado),
             }
         });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+// controlador para obtener la inforacion general de prestamos de un socio en el grupo
+// res.body = { Nombres, Prestamos_vigentes, Limite_prestamos, Limite_credito }
+export const info_prestamos_socio = async (req: AdminRequest<any>, res) => {
+    const Socio_id = Number(req.params.Socio_id);
+    const Grupo_id = Number(req.params.Grupo_id);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        // Obtener todos los socios del grupo
+        const sociosGrupo = await obtenerSociosGrupo(Grupo_id);
+
+        // Obtener la informacion de los acuerdos actuales
+        const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
+
+        const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
+
+        const Limite_credito = await obtenerLimiteCreditoDisponible(Socio_id, Grupo_id);
+
+        const socio = await existeSocio(Socio_id);
+
+        const data = {
+            Nombres: socio.Nombres,
+            Prestamos_vigentes: Prestamos_vigentes.length,
+            Limite_prestamos,
+            Limite_credito
+        }
+
+        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
