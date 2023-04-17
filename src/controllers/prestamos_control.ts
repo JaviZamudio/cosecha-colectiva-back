@@ -405,3 +405,42 @@ export const info_prestamos_socio = async (req: AdminRequest<any>, res) => {
         return res.status(code).json({ code, message });
     }
 }
+
+/**
+ * Obtener la informacion general de los prestamos ampliables de un socio
+ * Envia algo como 
+ * {
+ *  Prestamo_id: number,
+ *  Fecha_emision: Date, 
+ *  Interes_actual: number, // interes acumulado no pagado
+ *  Monto_prestamo: number, // monto original del prestamo
+ * }[]
+ */
+export const info_prestamos_ampliables = async (req: AdminRequest<any>, res) => {
+    const Socio_id = Number(req.params.Socio_id);
+    const Grupo_id = Number(req.params.Grupo_id);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        const prestamos = await obtener_prestamos_ampliables(Grupo_id, Socio_id);
+
+        const data = prestamos.map((prestamo) => {
+            const { Prestamo_id, Fecha_inicial, Interes_generado, Interes_pagado, Monto_prestamo  } = prestamo;
+            return {
+                Prestamo_id,
+                // Fecha_emision YYYY-MM-DD
+                Fecha_emision: new Date(Fecha_inicial).toISOString().split('T')[0],
+                Interes_actual: Interes_generado - Interes_pagado,
+                Monto_prestamo,
+            }
+        })
+
+        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
