@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { acciones_socio, registrar_compra_acciones, retiro_acciones } from "../../../controllers/acciones_control";
 import { crear_multa } from "../../../controllers/multas_control";
-import { ampliar_prestamo, crear_prestamo, get_prestamos_nopagados_socio, info_prestamos_ampliables, info_prestamos_socio } from "../../../controllers/prestamos_control";
+import { ampliar_prestamo, crear_prestamo, get_prestamos_nopagados_socio, info_prestamo, info_prestamos_ampliables, info_prestamos_socio } from "../../../controllers/prestamos_control";
 import { retirar_ganancias, get_usuario_ganancias } from "../../../controllers/socios_control";
 import { authAdmin } from "../../../middleware/auth";
 
@@ -23,7 +23,9 @@ router.post("/:Socio_id/prestamos", authAdmin, crear_prestamo);
 // Ampliar un prestamo a un socio
 router.post("/:Socio_id/prestamos/prestamos", authAdmin, ampliar_prestamo);
 // Obtener los prestamos ampliables de un socio
-router.get("/:Socio_id/prestamos/ampliables", authAdmin, info_prestamos_ampliables); // TODO implementar
+router.get("/:Socio_id/prestamos/ampliables", authAdmin, info_prestamos_ampliables);
+// Obtener informacion especifica de un prestamo
+router.get("/:Socio_id/prestamos/:Prestamo_id", authAdmin, info_prestamo);
 // Comprar acciones
 router.post("/:Socio_id/acciones", authAdmin, registrar_compra_acciones);
 // Retirar acciones

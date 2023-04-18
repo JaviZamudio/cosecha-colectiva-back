@@ -1,5 +1,5 @@
 import db from "../config/database";
-import { pagarPrestamo, generar_prestamo, obtener_prestamos_ampliables, obtenerPrestamosVigentes } from "../services/Prestamos.services";
+import { pagarPrestamo, generar_prestamo, obtener_prestamos_ampliables, obtenerPrestamosVigentes, existe_prestamo } from "../services/Prestamos.services";
 import { formatearFecha, getCommonError } from "../utils/utils";
 import { obtener_caja_sesion, obtenerSesionActual, obtener_sesion } from "../services/Sesiones.services";
 import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
@@ -436,6 +436,47 @@ export const info_prestamos_ampliables = async (req: AdminRequest<any>, res) => 
                 Monto_prestamo,
             }
         })
+
+        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+// controlador para obtener la informacion de un prestamo
+// res.body = { Prestamo_id, Prestamos_vigentes, Limite_prestamos, Limite_credito_actual, Deuda_actual }
+export const info_prestamo = async (req: AdminRequest<any>, res) => {
+    const Prestamo_id = Number(req.params.Prestamo_id);
+    const Grupo_id = Number(req.params.Grupo_id);
+    const Socio_id = Number(req.params.Socio_id);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        // Obtener todos los socios del grupo
+        const sociosGrupo = await obtenerSociosGrupo(Grupo_id);
+
+        // Obtener la informacion de los acuerdos actuales
+        const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
+
+        const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
+
+        const Limite_credito_actual = await obtenerLimiteCreditoDisponible(Socio_id, Grupo_id)
+
+        const prestamo = await existe_prestamo(Prestamo_id);
+
+        const Deuda_actual = prestamo.Monto_prestamo - prestamo.Monto_pagado;
+
+        const data = {
+            Prestamo_id,
+            Prestamos_vigentes: Prestamos_vigentes.length,
+            Limite_prestamos,
+            Limite_credito_actual,
+            Deuda_actual
+        }
 
         return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
     } catch (error) {
