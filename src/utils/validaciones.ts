@@ -179,14 +179,14 @@ export const limite_credito = async (Socio_id: number, Grupo_id: number, prestam
     }
 
     let total_prestamos = 0;
-    for (let i = 0; i < prestamos.length; i++) {
-        prestamos.forEach((prestamo) => {
-            total_prestamos = total_prestamos + prestamo.Monto_prestamo;
-        })
-        let puede_pedir = total_prestamos < (Acciones * Limite_credito!) ? 1 : 0;
-        let Limite_credito_disponible = (Acciones * Limite_credito!) - total_prestamos;
-        return([puede_pedir, Limite_credito_disponible]);
-    }
+    prestamos.forEach((prestamo) => {
+        total_prestamos = total_prestamos + prestamo.Monto_prestamo;
+    })
+    let puede_pedir = total_prestamos < (Acciones * Limite_credito!) ? 1 : 0;
+    let Limite_credito_disponible = (Acciones * Limite_credito!) - total_prestamos;
+    console.log('puede: ' + puede_pedir);
+    console.log('lim: '+ Limite_credito_disponible);
+    return([puede_pedir, Limite_credito_disponible]);
 }
 
 
@@ -210,6 +210,7 @@ export const prestamos_multiples = async (Grupo_id: number,  lista_socios: strin
     console.log("Este es el id del grupo: "+Grupo_id);
     let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
     const { Creditos_simultaneos, Limite_credito } = ( ((await db.query(query, [Grupo_id]))[0]))[0];
+    console.log('Este es el credito simultaneo: ' + Creditos_simultaneos)
     
     //asegurarse que no haya excedido su limite de credito
     for (let i = 0; i < lista_socios.length; i++) {
@@ -232,7 +233,7 @@ export const prestamos_multiples = async (Grupo_id: number,  lista_socios: strin
                 if (prestamos.length > Creditos_simultaneos) {
                     lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Ya alcanzo el limite de prestamos permitidos" });
                 }else{
-                    let limite = limite_credito(socio[0].Socio_id, Grupo_id, prestamos, socio[0].Acciones, Limite_credito);
+                    let limite = await limite_credito(socio[0].Socio_id, Grupo_id, prestamos, socio[0].Acciones, Limite_credito);
                    if(limite[0] === 1){
                         //si puede pedir porque sus prestamos no superan su limite
                         lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": limite[1] });
