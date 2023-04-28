@@ -180,3 +180,20 @@ export const pagar_multas = async (req: AdminRequest<{Multas: number[]}>, res) =
         return res.json({ code, message }).status(code);
     }
 }
+
+// GET devuelve informacion historica sobre las multas que a tenido un socio en un grupo
+export const get_info_his_mul = async (req: AdminRequest<Multa>, res) => {
+    const Grupo_id = req.id_grupo_actual!;
+    const Socio_id = req.id_socio_actual!;
+
+    try {
+        let query = "SELECT Multa_id, sesiones.Fecha as date, Descripcion, Monto_multa, Status FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
+        const [multas] = await db.query(query, [Socio_id, Grupo_id]);
+        console.log(multas);
+        return res.status(200).json({ code: 200, data: multas });
+    } catch (error) {
+        console.log(error);
+        const { message, code } = getCommonError(error)
+        return res.json({ code, message }).status(code);
+    }
+}
