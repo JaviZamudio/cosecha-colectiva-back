@@ -189,7 +189,6 @@ export const get_info_his_mul = async (req: AdminRequest<Multa>, res) => {
     try {
         let query = "SELECT Multa_id, sesiones.Fecha as date, Descripcion, Monto_multa, Status FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
         const [multas] = await db.query(query, [Socio_id, Grupo_id]);
-        console.log(multas);
         return res.status(200).json({ code: 200, data: multas });
     } catch (error) {
         console.log(error);
