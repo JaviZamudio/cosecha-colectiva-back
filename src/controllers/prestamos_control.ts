@@ -485,3 +485,18 @@ export const info_prestamo = async (req: AdminRequest<any>, res) => {
         return res.status(code).json({ code, message });
     }
 }
+
+export const get_info_his_pres = async (req: AdminRequest<any>, res) => {
+    const Grupo_id = req.id_grupo_actual!;
+    const Socio_id = req.id_socio_actual!;
+
+    try {
+        let query = "SELECT Prestamo_id, sesiones.Fecha AS date, Monto_prestamo AS total, Monto_prestamo - Monto_pagado AS restante, Estatus_prestamo AS estatus FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
+        const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
+        return res.status(200).json({ code: 200, data: prestamos });
+    } catch (error) {
+        console.log(error);
+        const { message, code } = getCommonError(error)
+        return res.json({ code, message }).status(code);
+    }
+}
