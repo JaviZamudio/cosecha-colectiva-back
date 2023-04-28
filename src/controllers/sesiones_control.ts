@@ -231,14 +231,21 @@ export const get_conteo_dinero = async (req, res) => {
 
 export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = req.id_grupo_actual;
+    const Socio_id = req.id_socio_actual;
 
     try {
         let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
         const [nombre] = await db.query(query, Grupo_id);
         let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Grupo_id = ?";
         const [sesiones] = await db.query(query2, Grupo_id);
+        let query3 = "SELECT acciones FROM grupo_socio WHERE Grupo_id = ? AND Socio_id = ?";
+        const [acciones] = await db.query(query3, [Grupo_id, Socio_id]);
+        let query4 = "SELECT SUM(Monto_prestamo) as suma FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0";
+        const [prestamos] = await db.query(query4, [Socio_id, Grupo_id]);
+        let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
+        const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre,sesiones: sesiones });
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma});
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
