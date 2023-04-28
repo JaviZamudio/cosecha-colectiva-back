@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { crear_sesion, enviar_inasistencias_sesion, finalizar_sesion, registrar_retardos, agendar_sesion, get_lista_socios, get_conteo_dinero, get_sesiones_grupo, recoger_firma, get_firma } from "../../../controllers/sesiones_control";
 import { authAdmin, authSocioGrupo } from "../../../middleware/auth";
+import { get_info_his_mul } from "../../../controllers/multas_control";
 
 // Router empezando en /api/grupos/:Grupo_id/sesiones
 const router = Router({ mergeParams: true });
@@ -15,6 +16,10 @@ router.get("/inasistencias", authAdmin, enviar_inasistencias_sesion );
 router.get("/conteo", authAdmin, get_conteo_dinero );
 // Obtener las sesiones por grupo
 router.get("/sesiones", authSocioGrupo, get_sesiones_grupo );
+// Informacion historica sobre las multas que a tenido un socio en un grupo
+router.get("/sesiones/multas", authSocioGrupo, get_info_his_mul );
+// Informacion historica sobre los prestamos que a tenido un socio en un grupo
+router.get("/sesiones/prestamos", authSocioGrupo, get_sesiones_grupo );
 // Registrar retardos de la sesion activa
 router.post("/retardos", authAdmin, registrar_retardos);
 // finalizar sesion activa
