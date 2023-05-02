@@ -4,7 +4,7 @@ import { actualizar_intereses, agregar_interes_prestamo, disminuir_sesiones, obt
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
-import { aws_access_key_id, aws_bucket_name, aws_region, aws_secret_access_key } from "../config/config";
+import { aws_bucket_name } from "../config/config";
 import { s3 } from "../config/aws";
 
 //crear nueva sesion
@@ -24,20 +24,13 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
     }
 
     try {
-
         //Verificar si es por lo menos el 50% de asistencia
         //extraer numero de socios
         let query_s = "SELECT * FROM grupo_socio WHERE Grupo_id = ?";
-        // const [socios_grupo] = await db.query(query_s, [grupo.Grupo_id]) as [GrupoSocio[], any];
         const [socios_grupo] = await db.query(query_s, [Grupo_id]) as [GrupoSocio[], any];
 
         //Contar cuantos estan presentes
-        let contador_socios = 0;
-        Socios.forEach(socio => {
-            if (socio.Presente === 1) {
-                contador_socios++;
-            }
-        });
+        let contador_socios = Socios.reduce((acc, socio) => socio.Presente === 1 ? acc + 1 : acc, 0); 
 
         let minimo_asistencia = Math.ceil(socios_grupo.length / 2);
         if (contador_socios < minimo_asistencia) {
@@ -51,10 +44,10 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         campos_sesion.Acciones = sesiones[0] ? sesiones[0].Acciones : 0;
 
         // Buscar si existen acuerdos anteriores, si no, enviar sesion 0, Si los encuentra enviar 1 y si los encuentra pero ya paso la fecha enviar 2
-        let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
-        const [acuerdos] = await db.query(query2, [Grupo_id]);
+        query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
+        const [acuerdos] = await db.query(query, [Grupo_id]);
         let hoy = new Date(Date.now());
-        let tipo_sesion = acuerdos[0].Fecha_acuerdos_fin < hoy ? 1 : acuerdos[0].Fecha_acuerdos_fin >= hoy ? 2 : 0;
+        let tipo_sesion = (acuerdos[0].Fecha_acuerdos_fin < hoy) ? 1 : ((acuerdos[0].Fecha_acuerdos_fin >= hoy) ? 2 : 0);
 
         // desactivar todas las sesiones que puedan estar activas para ese grupo
         query = "Update sesiones set Activa = 0 where Grupo_id = ?";
@@ -68,6 +61,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         await disminuir_sesiones(Grupo_id!);
         await actualizar_intereses(Grupo_id!);
         await agregar_interes_prestamo(Grupo_id!);
+
         return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion }).status(200);
     } catch (error) {
         console.log(error);
@@ -75,7 +69,6 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         return res.json({ code, message }).status(code);
     }
 }
-
 
 //Obtener inasistencias de la sesion
 export const enviar_inasistencias_sesion = async (req, res) => {
@@ -99,7 +92,6 @@ export const enviar_inasistencias_sesion = async (req, res) => {
         return res.json({ code, message }).status(code);
     }
 }
-
 
 //Registrar retardos
 export const registrar_retardos = async (req, res) => {
@@ -186,7 +178,6 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
         con.release();
     }
 }
-
 
 export const agendar_sesion = async (req, res) => {
     const Grupo_id = req.id_grupo_actual;

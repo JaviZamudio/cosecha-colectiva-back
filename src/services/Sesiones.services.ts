@@ -57,7 +57,7 @@ export const registrar_asistencias = async (Grupo_id, Socios) => {
         const sesion = await obtener_sesion_activa(Grupo_id);
 
         //registrar asistencias
-        const asistencias_con_error: {Socio_id: number, error: string}[] = [];
+        const asistencias_con_error: { Socio_id: number, error: string }[] = [];
         for (let i = 0; i < Socios.length; i++) {
             try {
                 // Verificar que el socio existe
@@ -112,17 +112,24 @@ export const existeSesion = async (Sesion_id: number) => {
 
 export const disminuir_sesiones = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
-    const query = "UPDATE prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id SET prestamos.Sesiones_restantes = (prestamos.Sesiones_restantes - 1 ) WHERE sesiones.Grupo_id = ?;";
+
+    const query = `
+    UPDATE prestamos 
+    INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id 
+    SET prestamos.Sesiones_restantes = (prestamos.Sesiones_restantes - 1 ) 
+    WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0`;
     await db.query(query, [Grupo_id]);
+
+    return;
 }
 
 export const actualizar_intereses = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
-    
+
     //intereses normales --- Tasa_interes --- %
     const query = "UPDATE prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id SET prestamos.Interes_generado = prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100) WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
     await db.query(query, [Grupo_id]);
@@ -139,12 +146,12 @@ export const actualizar_intereses = async (Grupo_id: number) => {
 
 export const agregar_interes_prestamo = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
     //obtener sesion actual
     let sesion = await obtenerSesionActual(Grupo_id);
-    
-    try{
+
+    try {
         //intereses normales --- Tasa_interes --- %
         const query = "SELECT Prestamo_id, prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100) as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
         let uno = (await db.query(query, [Grupo_id]))[0];
@@ -183,7 +190,7 @@ export const agregar_interes_prestamo = async (Grupo_id: number) => {
             let res4 = await db.query(ins4, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 3])[0];
             return res4;
         }));
-    }catch (error) {
+    } catch (error) {
         const { code, message } = catch_common_error(error);
         throw { code, message };
     }
