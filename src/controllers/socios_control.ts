@@ -485,3 +485,24 @@ export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
         return res.status(code).json({ code, message });
     }
 }
+
+export const post_usuario_status = async (req: AdminRequest<GrupoSocio>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    const Socio_id = req.params.Socio_id
+    const Status = req.body.Socio_id
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        //Actualizar el status de un socio dentro de un grupo
+        let query = "UPDATE grupo_socio SET Status = ? WHERE Socio_id = ? AND Grupo_id";
+        await db.query(query, [Status,Socio_id, Grupo_id]);
+
+        return res.status(200).json({ code: 200, message: 'Status de socio actualizado'});
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
