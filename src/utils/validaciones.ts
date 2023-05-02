@@ -3,6 +3,7 @@ import db from '../config/database';
 import random from 'string-random';
 import { OkPacket } from "mysql2";
 import { RowDataPacket } from "mysql2";
+import { obtenerAcuerdoActual } from "../services/Acuerdos.services";
 
 export const Fecha_actual = function () {
     var now = new Date();
@@ -26,7 +27,7 @@ export const generarCodigoValido = async function () {
 }
 
 // Funcion para saber si un json tiene campos como undefined
-export const campos_incompletos = ( objeto: object) => {
+export const campos_incompletos = (objeto: object) => {
     for (let key in objeto) {
         if (objeto[key] === undefined) {
             console.log(key);
@@ -38,9 +39,9 @@ export const campos_incompletos = ( objeto: object) => {
 }
 
 // Valida si el grupo existe en la BD
-export const existe_grupo = async ( Grupo_id: number) => {
+export const existe_grupo = async (Grupo_id: number) => {
     let query = "SELECT * FROM grupos WHERE Codigo_grupo = ? or Grupo_id = ?";
-    const [grupo] =  await db.query(query, [Grupo_id, Grupo_id]) as [Grupo[], any];
+    const [grupo] = await db.query(query, [Grupo_id, Grupo_id]) as [Grupo[], any];
 
     if (grupo.length != 0) {
         return grupo[0];
@@ -50,9 +51,9 @@ export const existe_grupo = async ( Grupo_id: number) => {
 };
 
 // Valida si el socio existe en la BD
-export const existe_socio = async ( Socio_id: number | string) => {
+export const existe_socio = async (Socio_id: number | string) => {
     let query = "SELECT * FROM socios WHERE Socio_id = ? or Username = ?";
-    const [socio] =  await db.query(query, [Socio_id, Socio_id]) as [Socio[], any];
+    const [socio] = await db.query(query, [Socio_id, Socio_id]) as [Socio[], any];
 
     if (socio.length != 0) {
         return socio[0];
@@ -73,7 +74,7 @@ export const socio_en_grupo = async (Socio_id, Grupo_id) => {
     throw "El socio con id " + Socio_id + " no está en e grupo con el id " + Grupo_id;
 }
 
-export const existe_sesion = async ( Sesion_id: number) => {
+export const existe_sesion = async (Sesion_id: number) => {
     let query = "SELECT * FROM sesiones WHERE Sesion_id = ?";
     const [sesion] = await db.query(query, [Sesion_id]) as [Sesion[], any];
 
@@ -84,7 +85,7 @@ export const existe_sesion = async ( Sesion_id: number) => {
     throw "No existe la sesion con el Id: " + Sesion_id;
 }
 
-export const existe_multa = async ( Multa_id: number) => {
+export const existe_multa = async (Multa_id: number) => {
     let query = "SELECT * FROM multas WHERE Multa_id = ?";
     const [multa] = await db.query(query, [Multa_id]) as [Multa[], any];
 
@@ -95,7 +96,7 @@ export const existe_multa = async ( Multa_id: number) => {
     throw "No existe la multa con el Id: " + Multa_id;
 }
 
-export const existe_Acuerdo = async ( Acuerdo_id: number) => {
+export const existe_Acuerdo = async (Acuerdo_id: number) => {
     let query = "SELECT * FROM acuerdos WHERE Acuerdo_id = ?";
     const [acuerdo] = await db.query(query, [Acuerdo_id]) as [Acuerdo[], any];
 
@@ -106,7 +107,7 @@ export const existe_Acuerdo = async ( Acuerdo_id: number) => {
     throw "No existe el acuerdo con el Id: " + Acuerdo_id;
 }
 
-export const obtener_acuerdo_actual = async ( Grupo_id: number) => {
+export const obtener_acuerdo_actual = async (Grupo_id: number) => {
     let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
     const [acuerdo] = await db.query(query, [Grupo_id]) as [Acuerdo[], any];
 
@@ -128,7 +129,7 @@ export const actualizar_password = async (Socio_id, Password) => {
     ) as [OkPacket, any])[0];
 }
 
-export const catch_common_error = ( error: string | { code: number; message: string; } | Error | any) => {
+export const catch_common_error = (error: string | { code: number; message: string; } | Error | any) => {
     if (typeof (error) === "string") {
         return { code: 400, message: error };
     }
@@ -140,7 +141,7 @@ export const catch_common_error = ( error: string | { code: number; message: str
     return { message: "Error interno del servidor", code: 500 };
 }
 
-export const existe_pregunta = async ( Pregunta_id: number) => {
+export const existe_pregunta = async (Pregunta_id: number) => {
     let query = "SELECT * FROM preguntas_seguridad WHERE preguntas_seguridad_id = ?";
     const [pregunta] = await db.query(query, [Pregunta_id]) as [PreguntaSeguridad[], any];
 
@@ -160,22 +161,22 @@ interface SociosPrestamo {
     Limite_credito_disponible?: number
 }
 
-export const limite_credito = async (Socio_id: number, Grupo_id: number, prestamos: Prestamo[] | null, Acciones: number | null, Limite_credito: number | null ) => {
-    
-    if(prestamos === null){
+export const limite_credito = async (Socio_id: number, Grupo_id: number, prestamos: Prestamo[] | null, Acciones: number | null, Limite_credito: number | null) => {
+
+    if (prestamos === null) {
         let query = "SELECT * FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0;";
-        prestamos =  (await db.query(query, [Socio_id, Grupo_id]))[0] as Prestamo[];
+        prestamos = (await db.query(query, [Socio_id, Grupo_id]))[0] as Prestamo[];
     }
 
-    if(Acciones === null){
+    if (Acciones === null) {
         let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? and Grupo_id = ?";
         const [socio] = await db.query(query, [Socio_id, Grupo_id]) as [GrupoSocio[], any];
         Acciones = socio[0].Acciones!;
     }
 
-    if(Limite_credito === null){
+    if (Limite_credito === null) {
         let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
-        Limite_credito = {Limite_credito} = (((await db.query(query, [Grupo_id]))[0]))[0];
+        Limite_credito = { Limite_credito } = (((await db.query(query, [Grupo_id]))[0]))[0];
     }
 
     let total_prestamos = 0;
@@ -185,8 +186,8 @@ export const limite_credito = async (Socio_id: number, Grupo_id: number, prestam
     let puede_pedir = total_prestamos < (Acciones * Limite_credito!) ? 1 : 0;
     let Limite_credito_disponible = (Acciones * Limite_credito!) - total_prestamos;
     console.log('puede: ' + puede_pedir);
-    console.log('lim: '+ Limite_credito_disponible);
-    return([puede_pedir, Limite_credito_disponible]);
+    console.log('lim: ' + Limite_credito_disponible);
+    return ([puede_pedir, Limite_credito_disponible]);
 }
 
 
@@ -201,27 +202,30 @@ export const limite_credito = async (Socio_id: number, Grupo_id: number, prestam
  * @returns Arreglo de objetos que indican si cada socio puede pedir un prestamo o no.
  * @trhow Error si algun socio no está en el grupo
  */
-export const prestamos_multiples = async (Grupo_id: number,  lista_socios: string | any[] | undefined) => {
+export const prestamos_multiples = async (Grupo_id: number, lista_socios: string | any[] | undefined) => {
     let lista_socios_prestamo: SociosPrestamo[] = []; //{{"Socio_id" : 1, "Nombres" : "Ale", "Apellidos" : "De Alvino", "puede_pedir" : 0, "message": "Ya tiene un prestamo vigente" }} ----> prestamo en 0 significa que no puede pedir prestamo, si esta en 1 es que si puede pedir un prestamo 
+
     if (!Grupo_id || !lista_socios) {
         throw "Campos incompletos";
     }
-    console.log("Esta es la lista de socios: "+lista_socios);
-    console.log("Este es el id del grupo: "+Grupo_id);
-    let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
-    const { Creditos_simultaneos, Limite_credito } = ( ((await db.query(query, [Grupo_id]))[0]))[0];
-    console.log('Este es el credito simultaneo: ' + Creditos_simultaneos)
-    
+
+    console.log("Esta es la lista de socios: " + JSON.stringify(lista_socios));
+    console.log("Este es el id del grupo: " + Grupo_id);
+
+    const { Creditos_simultaneos, Limite_credito } = await obtenerAcuerdoActual(Grupo_id);
+
+    console.log('Creditos Simultaneaos permitidos: ' + Creditos_simultaneos)
+
     //asegurarse que no haya excedido su limite de credito
     for (let i = 0; i < lista_socios.length; i++) {
         //Buscamos todos los prestamos activos que tenga y sumamos las cantidades
         let socio = lista_socios[i];
-        console.log("Este es el socio: "+socio);
+        console.log("Este es el socio: " + socio);
         socio.forEach(element => console.log(element));
         let query2 = "SELECT * FROM socios WHERE Socio_id = ?";
-        const datos_personales =  (await db.query(query2, [socio[0].Socio_id]))[0] as Socio[];
+        const datos_personales = (await db.query(query2, [socio[0].Socio_id]))[0] as Socio[];
         let query3 = "SELECT * FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0;";
-        const prestamos =  (await db.query(query3, [socio[0].Socio_id, Grupo_id]))[0] as Prestamo[];
+        const prestamos = (await db.query(query3, [socio[0].Socio_id, Grupo_id]))[0] as Prestamo[];
         if (prestamos.length <= 0) {
             //puede pedir por que ni siquiera tiene algun prestamo
             lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": (socio[0].Acciones * Limite_credito) });
@@ -232,12 +236,12 @@ export const prestamos_multiples = async (Grupo_id: number,  lista_socios: strin
             } else {
                 if (prestamos.length >= Creditos_simultaneos) {
                     lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Ya alcanzo el limite de prestamos permitidos" });
-                }else{
+                } else {
                     let limite = await limite_credito(socio[0].Socio_id, Grupo_id, prestamos, socio[0].Acciones, Limite_credito);
-                   if(limite[0] === 1){
+                    if (limite[0] === 1) {
                         //si puede pedir porque sus prestamos no superan su limite
                         lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 1, "message": "", "Limite_credito_disponible": limite[1] });
-                    }else{
+                    } else {
                         //agregar el porque no puede pedir un prestamo
                         lista_socios_prestamo.push({ "Socio_id": socio[0].Socio_id, "Nombres": datos_personales[0].Nombres, "Apellidos": datos_personales[0].Apellidos, "puede_pedir": 0, "message": "Sus prestamos llegan a su limite de credito" });
                     }
@@ -267,9 +271,9 @@ export const validar_password = async (Socio_id, Password) => {
     }
 }
 
-export const obtener_sesion_activa = async ( Grupo_id: number) => {
+export const obtener_sesion_activa = async (Grupo_id: number) => {
     let query = "SELECT * FROM sesiones WHERE sesiones.Activa = TRUE AND sesiones.Grupo_id = ? ORDER BY sesiones.Sesion_id DESC LIMIT 1";
-    const sesiones =  (await db.query(query, [Grupo_id]))[0] as Sesion[];
+    const sesiones = (await db.query(query, [Grupo_id]))[0] as Sesion[];
 
     if (sesiones.length > 0) {
         return sesiones[0];
@@ -278,9 +282,9 @@ export const obtener_sesion_activa = async ( Grupo_id: number) => {
     throw "No hay una sesion en curso para el grupo " + Grupo_id;
 }
 
-export const obtener_acuerdos_activos = async ( Grupo_id: number) => {
+export const obtener_acuerdos_activos = async (Grupo_id: number) => {
     let query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1 DESC LIMIT 1";
-    const acuerdos =  (await db.query(query, [Grupo_id]))[0] as Acuerdo[];
+    const acuerdos = (await db.query(query, [Grupo_id]))[0] as Acuerdo[];
 
     if (acuerdos.length > 0) {
         return acuerdos[0];
@@ -304,12 +308,12 @@ export const registrar_asistencias = async (/** @type {Number} */ Grupo_id, /** 
         let query = "select * from asistencias where Sesion_id = ?";
         const asistencias_grupo = ((await db.query(query, sesion.Sesion_id))[0]) as Asistencia[];
 
-        if(asistencias_grupo.length > 0){
+        if (asistencias_grupo.length > 0) {
             throw "Ya hay asistencias registradas para el grupo " + Grupo_id;
         }
 
         //registrar asistencias
-        const asistencias_con_error: {Socio_id: number, error: string}[] = [];
+        const asistencias_con_error: { Socio_id: number, error: string }[] = [];
         for (let i = 0; i < Socios.length; i++) {
             try {
                 // Verificar que el socio existe
