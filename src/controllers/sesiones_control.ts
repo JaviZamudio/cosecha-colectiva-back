@@ -50,6 +50,12 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         campos_sesion.Caja = sesiones[0] ? sesiones[0].Caja : 0;
         campos_sesion.Acciones = sesiones[0] ? sesiones[0].Acciones : 0;
 
+        // Buscar si existen acuerdos anteriores, si no, enviar sesion 0, Si los encuentra enviar 1 y si los encuentra pero ya paso la fecha enviar 2
+        let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
+        const [acuerdos] = await db.query(query2, [Grupo_id]);
+        let hoy = new Date(Date.now());
+        let tipo_sesion = acuerdos[0].Fecha_acuerdos_fin < hoy ? 1 : acuerdos[0].Fecha_acuerdos_fin >= hoy ? 2 : 0;
+
         // desactivar todas las sesiones que puedan estar activas para ese grupo
         query = "Update sesiones set Activa = 0 where Grupo_id = ?";
         await db.query(query, Grupo_id);
@@ -62,7 +68,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         await disminuir_sesiones(Grupo_id!);
         await actualizar_intereses(Grupo_id!);
         await agregar_interes_prestamo(Grupo_id!);
-        return res.json({ code: 200, message: 'Sesion creada y asistencias registradas' }).status(200);
+        return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion }).status(200);
     } catch (error) {
         console.log(error);
         const { code, message } = catch_common_error(error);
