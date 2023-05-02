@@ -465,3 +465,23 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
         return res.status(code).json({ code, message });
     }
 }
+
+export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+    
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        //Obetener el nombre y apellidos de los socios y su status en el grupo
+        let query = "SELECT so.Nombres, so.Apellidos, gs.Status FROM socios so JOIN grupo_socio gs ON so.Socio_id = gs.Socio_id WHERE gs.Grupo_id = ?;";
+        const [socios] = await db.query(query, [Grupo_id]);
+        
+
+        return res.status(200).json({ code: 200, message: 'Socios obtenidos', socios : socios});
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { acciones_socio, registrar_compra_acciones, retiro_acciones } from "../../../controllers/acciones_control";
 import { crear_multa } from "../../../controllers/multas_control";
 import { ampliar_prestamo, crear_prestamo, get_prestamos_nopagados_socio, info_prestamo, info_prestamos_ampliables, info_prestamos_socio } from "../../../controllers/prestamos_control";
-import { retirar_ganancias, get_usuario_ganancias } from "../../../controllers/socios_control";
+import { retirar_ganancias, get_usuario_ganancias, get_usuario_status } from "../../../controllers/socios_control";
 import { authAdmin } from "../../../middleware/auth";
 
 // Router empezando en /api/grupos/socios
@@ -10,6 +10,8 @@ const router = Router({ mergeParams: true });
 
 // Obtener las ganancias no pagados de un socio
 router.get("/ganancias", authAdmin, get_usuario_ganancias);
+// Obtener todos los socios y sus status dentro de un grupo
+router.get("/socios", authAdmin, get_usuario_status);
 // Obtener acciones de los socios
 router.get("/acciones/retirar", authAdmin, acciones_socio);
 // Obtener los prestamos no pagados de un socio
