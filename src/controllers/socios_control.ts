@@ -474,7 +474,7 @@ export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
         //Obetener el nombre y apellidos de los socios y su status en el grupo
-        let query = "SELECT so.Nombres, so.Apellidos, gs.Status FROM socios so JOIN grupo_socio gs ON so.Socio_id = gs.Socio_id WHERE gs.Grupo_id = ?;";
+        let query = "SELECT CONCAT(so.Nombres, ' ', so.Apellidos) AS Nombre, gs.Status FROM socios so JOIN grupo_socio gs ON so.Socio_id = gs.Socio_id WHERE gs.Grupo_id = ?;";
         const [socios] = await db.query(query, [Grupo_id]);
         
 
