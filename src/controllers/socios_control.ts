@@ -496,7 +496,7 @@ export const post_usuario_status = async (req: AdminRequest<GrupoSocio>, res) =>
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
         //Actualizar el status de un socio dentro de un grupo
-        let query = "UPDATE grupo_socio SET Status = ? WHERE Socio_id = ? AND Grupo_id";
+        let query = "UPDATE grupo_socio SET Status = ? WHERE Socio_id = ? AND Grupo_id = ?";
         await db.query(query, [Status,Socio_id, Grupo_id]);
 
         return res.status(200).json({ code: 200, message: 'Status de socio actualizado'});
