@@ -15,7 +15,7 @@ router.get("/socios", authAdmin, get_usuario_status);
 // Obtener acciones de los socios
 router.get("/acciones/retirar", authAdmin, acciones_socio);
 // Actualizar el status de un socio dentro de un grupo
-router.get("/:Socio_id/socios", authAdmin, post_usuario_status);
+router.post("/:Socio_id/socios", authAdmin, post_usuario_status);
 // Obtener los prestamos no pagados de un socio
 router.get("/:Socio_id/prestamos", authAdmin, get_prestamos_nopagados_socio);
 // Obtener info de los prestamos de un socio
