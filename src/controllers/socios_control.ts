@@ -494,9 +494,7 @@ export const post_usuario_status = async (req: AdminRequest<GrupoSocio>, res) =>
     try {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
-        console.log('grupo: ' + Grupo_id);
-        console.log('socio: ' + Socio_id);
-        console.log(Status);
+        
         //Actualizar el status de un socio dentro de un grupo
         let query = "UPDATE grupo_socio SET Status = ? WHERE Socio_id = ? AND Grupo_id = ?";
         await db.query(query, [Status,Socio_id, Grupo_id]);
