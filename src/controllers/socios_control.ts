@@ -288,9 +288,9 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         } catch (error) {
             // si no hay acuerdo actual, no se le asignan acciones
         }
-
+        
         con.commit();
-        return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente" });
+        return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id : grupo.Grupo_id });
     } catch (error) {
         con.rollback();
         const { message, code } = catch_common_error(error);
