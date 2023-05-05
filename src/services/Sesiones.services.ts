@@ -57,7 +57,7 @@ export const registrar_asistencias = async (Grupo_id, Socios) => {
         const sesion = await obtener_sesion_activa(Grupo_id);
 
         //registrar asistencias
-        const asistencias_con_error: {Socio_id: number, error: string}[] = [];
+        const asistencias_con_error: { Socio_id: number, error: string }[] = [];
         for (let i = 0; i < Socios.length; i++) {
             try {
                 // Verificar que el socio existe
@@ -112,17 +112,24 @@ export const existeSesion = async (Sesion_id: number) => {
 
 export const disminuir_sesiones = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
-    const query = "UPDATE prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id SET prestamos.Sesiones_restantes = (prestamos.Sesiones_restantes - 1 ) WHERE sesiones.Grupo_id = ?;";
+
+    const query = `
+    UPDATE prestamos 
+    INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id 
+    SET prestamos.Sesiones_restantes = (prestamos.Sesiones_restantes - 1 ) 
+    WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0`;
     await db.query(query, [Grupo_id]);
+
+    return;
 }
 
 export const actualizar_intereses = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
-    
+
     //intereses normales --- Tasa_interes --- %
     const query = "UPDATE prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id SET prestamos.Interes_generado = prestamos.Interes_generado + ((prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100) WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
     await db.query(query, [Grupo_id]);
@@ -139,12 +146,12 @@ export const actualizar_intereses = async (Grupo_id: number) => {
 
 export const agregar_interes_prestamo = async (Grupo_id: number) => {
     if (!Grupo_id) {
-        throw { code: 400, message: "Datos incompletos"};
+        throw { code: 400, message: "Datos incompletos" };
     }
     //obtener sesion actual
     let sesion = await obtenerSesionActual(Grupo_id);
-    
-    try{
+
+    try {
         //intereses normales --- Tasa_interes --- %
         const query = "SELECT Prestamo_id, (prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100 as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
         let uno = (await db.query(query, [Grupo_id]))[0];
@@ -183,7 +190,51 @@ export const agregar_interes_prestamo = async (Grupo_id: number) => {
             let res4 = await db.query(ins4, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 3])[0];
             return res4;
         }));
-    }catch (error) {
+    } catch (error) {
+        const { code, message } = catch_common_error(error);
+        throw { code, message };
+    }
+}
+
+/**
+ * Calcula las sesiones entre la fecha de creacion de acuerdos y la fecha de finalizacion de acuerdos
+ * @param Grupo_id
+ * @returns Numero de sesiones
+ */
+export async function calcularSesionesEntreAcuerdos(Grupo_id: number) {
+    try {
+        const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+        
+        const fechaInicio = new Date(acuerdoActual.Fecha_acuerdos); // 2021-01-01
+        const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
+        const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
+
+        const sesionesEntreAcuerdos = Math.round((fechaFin.getTime() - fechaInicio.getTime()) / (periodoReuniones * 7 * 24 * 60 * 60 * 1000));
+
+        return sesionesEntreAcuerdos;
+    } catch (error) {
+        const { code, message } = catch_common_error(error);
+        throw { code, message };
+    }
+}
+
+/**
+ * Calcula las sesiones restantes entre la fecha actual y la fecha de finalizacion de acuerdos
+ * @param Grupo_id
+ * @returns Numero de sesiones
+ * @returns 0 si ya no hay sesiones restantes
+ */
+export async function calcularSesionesParaAcuerdosFin(Grupo_id: number) {
+    try {
+        const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+        
+        const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
+        const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
+
+        const sesionesEntreAcuerdos = Math.round((fechaFin.getTime() - Date.now()) / (periodoReuniones * 7 * 24 * 60 * 60 * 1000));
+
+        return sesionesEntreAcuerdos;
+    } catch (error) {
         const { code, message } = catch_common_error(error);
         throw { code, message };
     }
