@@ -217,7 +217,7 @@ export const pagar_prestamos = async (req: AdminRequest<PayloadPagarPrestamos>, 
 
         await con.commit();
 
-        res.status(200).json({ code: 200, message: 'Pagos realizados' });
+        return res.status(200).json({ code: 200, message: 'Pagos realizados' });
     } catch (error) {
         console.log(error);
         await con.rollback();

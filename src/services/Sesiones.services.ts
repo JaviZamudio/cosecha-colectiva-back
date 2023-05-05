@@ -2,6 +2,7 @@ import { Pool, PoolConnection } from "mysql2/promise";
 import db from "../config/database";
 import { catch_common_error, existe_socio, obtener_sesion_activa, socio_en_grupo } from "../utils/validaciones";
 import { obtenerAcuerdoActual } from "./Acuerdos.services";
+import { getCommonError } from "../utils/utils";
 
 /**
  * Obtiene la sesion activa de un grupo si es que hay una.
@@ -51,41 +52,34 @@ export const obtener_caja_sesion = async (sesion: number | Sesion) => {
 }
 
 export const registrar_asistencias = async (Grupo_id, Socios) => {
-    try {
-        // VERIFICACIONES
-        // Verificar que la sesion existe
-        const sesion = await obtener_sesion_activa(Grupo_id);
+    // VERIFICACIONES
+    // Verificar que la sesion existe
+    const sesion = await obtener_sesion_activa(Grupo_id);
 
-        //registrar asistencias
-        const asistencias_con_error: { Socio_id: number, error: string }[] = [];
-        for (let i = 0; i < Socios.length; i++) {
-            try {
-                // Verificar que el socio existe
-                const socio = await existe_socio(Socios[i].Socio_id);
-                // Verificar que el socio pertenezca al grupo
-                await socio_en_grupo(socio.Socio_id, Grupo_id);
+    //registrar asistencias
+    const asistencias_con_error: { Socio_id: number, error: string }[] = [];
+    for (let i = 0; i < Socios.length; i++) {
+        try {
+            // Verificar que el socio existe
+            const socio = await existe_socio(Socios[i].Socio_id);
+            // Verificar que el socio pertenezca al grupo
+            await socio_en_grupo(socio.Socio_id, Grupo_id);
 
-                // INSERCION
-                let query = "INSERT INTO asistencias (Presente, Sesion_id, Socio_id) VALUES (?, ?, ?)";
-                await db.query(query, [Socios[i].Presente, sesion.Sesion_id, Socios[i].Socio_id]);
-            } catch (error) {
-                const { message } = catch_common_error(error)
-                asistencias_con_error.push({
-                    Socio_id: Socios[i].Socio_id,
-                    error: message
-                });
-            }
+            // INSERCION
+            let query = "INSERT INTO asistencias (Presente, Sesion_id, Socio_id) VALUES (?, ?, ?)";
+            await db.query(query, [Socios[i].Presente, sesion.Sesion_id, Socios[i].Socio_id]);
+        } catch (error) {
+            const { message } = catch_common_error(error)
+            asistencias_con_error.push({
+                Socio_id: Socios[i].Socio_id,
+                error: message
+            });
         }
+    }
 
-        if (asistencias_con_error.length > 0) {
-            // return res.json({ code: 400, message: 'Asistencias con error', data: asistencias_con_error }).status(400);
-            throw { code: 400, message: 'Asistencias con error', data: asistencias_con_error };
-        }
-
-        // throw { code: 200, message: 'Asistencias registradas' };
-    } catch (error) {
-        const { code, message } = catch_common_error(error);
-        throw { code, message };
+    if (asistencias_con_error.length > 0) {
+        // return res.json({ code: 400, message: 'Asistencias con error', data: asistencias_con_error }).status(400);
+        throw { code: 400, message: 'Asistencias con error: ' + JSON.stringify(asistencias_con_error) };
     }
 }
 
@@ -204,7 +198,7 @@ export const agregar_interes_prestamo = async (Grupo_id: number) => {
 export async function calcularSesionesEntreAcuerdos(Grupo_id: number) {
     try {
         const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
-        
+
         const fechaInicio = new Date(acuerdoActual.Fecha_acuerdos); // 2021-01-01
         const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
         const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
@@ -227,7 +221,7 @@ export async function calcularSesionesEntreAcuerdos(Grupo_id: number) {
 export async function calcularSesionesParaAcuerdosFin(Grupo_id: number) {
     try {
         const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
-        
+
         const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
         const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
 

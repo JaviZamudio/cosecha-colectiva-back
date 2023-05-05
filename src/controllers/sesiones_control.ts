@@ -66,7 +66,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         const sesionesEntreAcuerdos = await calcularSesionesEntreAcuerdos(Grupo_id!); // 10, por ejemplo
         let sesionesRestantes: number | undefined = await calcularSesionesParaAcuerdosFin(Grupo_id!); // 8, por ejemplo
         // Resetear sesiones restantes si se cumple la condicion (para no mandarlo)
-        if (sesionesRestantes < (sesionesEntreAcuerdos * 0.7)) { // 8 < 10 * 0.7 = False (no se resetea)
+        if (sesionesRestantes / sesionesEntreAcuerdos > 0.8) {
             sesionesRestantes = undefined;
         }
 
