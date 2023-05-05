@@ -457,9 +457,6 @@ export const info_prestamo = async (req: AdminRequest<any>, res) => {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
-        // Obtener todos los socios del grupo
-        const sociosGrupo = await obtenerSociosGrupo(Grupo_id);
-
         // Obtener la informacion de los acuerdos actuales
         const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
 
@@ -471,12 +468,15 @@ export const info_prestamo = async (req: AdminRequest<any>, res) => {
 
         const Deuda_actual = prestamo.Monto_prestamo - prestamo.Monto_pagado;
 
+        const socio = await existeSocio(Socio_id);
+
         const data = {
             Prestamo_id,
             Prestamos_vigentes: Prestamos_vigentes.length,
             Limite_prestamos,
             Limite_credito_actual,
-            Deuda_actual
+            Deuda_actual,
+            Nombres: socio.Nombres + " " + socio.Apellidos,
         }
 
         return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
