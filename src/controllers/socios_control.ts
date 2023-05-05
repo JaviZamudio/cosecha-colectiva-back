@@ -280,15 +280,12 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         query = "INSERT INTO grupo_socio SET ?";
         const [resultado_socio] = await con.query(query, campos_grupo_socio) as [OkPacket, any];
 
+        let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
+        const acuerdo = (await con.query(query2, [grupo.Grupo_id]))[0][0] as Acuerdo;
         // si hay acuerdo actual, se le asignan las acciones
-        try {
-            const acuerdoActual = await obtenerAcuerdoActual(grupo.Grupo_id!);
-
-            comprar_acciones(resultado_socio.insertId, grupo.Grupo_id, acuerdoActual.Minimo_aportacion, con);
-        } catch (error) {
-            // si no hay acuerdo actual, no se le asignan acciones
+        if(acuerdo!== undefined){
+            comprar_acciones(resultado_socio.insertId, grupo.Grupo_id, acuerdo.Minimo_aportacion, con);
         }
-        
         con.commit();
         return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id : grupo.Grupo_id });
     } catch (error) {
@@ -454,7 +451,8 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
         FROM ganancias
         JOIN socios ON socios.Socio_id = ganancias.Socio_id
         JOIN sesiones ON sesiones.Sesion_id = ganancias.Sesion_id
-        WHERE sesiones.Grupo_id = ? AND ganancias.Entregada = 0 AND sesiones.Fecha <= (SELECT Fecha FROM sesiones WHERE Tipo_sesion = 1 AND Grupo_id = ? ORDER BY Sesion_id DESC LIMIT 1)
+        JOIN grupo_socio ON grupo_socio.Socio_id = socios.Socio_id
+        WHERE sesiones.Grupo_id = ? AND ganancias.Entregada = 0 AND grupo_socio.Status = 1 AND sesiones.Fecha <= (SELECT Fecha FROM sesiones WHERE Tipo_sesion = 1 AND Grupo_id = ? ORDER BY Sesion_id DESC LIMIT 1)
         group by ganancias.Socio_id`;
         const [ganancias] = await db.query(query, [Grupo_id, Grupo_id]);
 
