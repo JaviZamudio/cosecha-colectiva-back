@@ -1,6 +1,6 @@
 import db from "../config/database";
 import { Fecha_actual, campos_incompletos, catch_common_error, obtener_sesion_activa, existe_socio, socio_en_grupo } from "../utils/validaciones";
-import { actualizar_intereses, agregar_interes_prestamo, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
+import { actualizar_intereses, agregar_interes_prestamo, calcularSesionesParaAcuerdosFin, calcularSesionesEntreAcuerdos, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
@@ -62,7 +62,15 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         await actualizar_intereses(Grupo_id!);
         await agregar_interes_prestamo(Grupo_id!);
 
-        return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion }).status(200);
+        // Ver si hay que mandar sesiones restantes (porcentaje de sesiones restantes >= 70%)
+        const sesionesEntreAcuerdos = await calcularSesionesEntreAcuerdos(Grupo_id!); // 10, por ejemplo
+        let sesionesRestantes: number | undefined = await calcularSesionesParaAcuerdosFin(Grupo_id!); // 8, por ejemplo
+        // Resetear sesiones restantes si se cumple la condicion (para no mandarlo)
+        if (sesionesRestantes < (sesionesEntreAcuerdos * 0.7)) { // 8 < 10 * 0.7 = False (no se resetea)
+            sesionesRestantes = undefined;
+        }
+
+        return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion, Sesiones_restantes: sesionesRestantes }).status(200);
     } catch (error) {
         console.log(error);
         const { code, message } = catch_common_error(error);

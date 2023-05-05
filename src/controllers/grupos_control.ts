@@ -1,5 +1,6 @@
 import db from '../config/database';
 import { crearGrupo } from '../services/Grupos.services';
+import { calcularSesionesEntreAcuerdos, calcularSesionesParaAcuerdosFin } from '../services/Sesiones.services';
 import { agregarSocioGrupo } from '../services/Socios.services';
 import { SocioRequest } from '../types/misc';
 import { getCommonError } from '../utils/utils';
@@ -61,7 +62,10 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
         if(rol[0].Tipo_Socio=='ADMIN'){
             Codigo_grupo = grupo[0].Codigo_grupo
         }
-        return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo } });
+
+        const Sesiones_restantes = await calcularSesionesParaAcuerdosFin(Number(Grupo_id));
+
+        return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes } });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);

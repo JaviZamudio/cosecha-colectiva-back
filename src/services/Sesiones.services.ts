@@ -195,3 +195,47 @@ export const agregar_interes_prestamo = async (Grupo_id: number) => {
         throw { code, message };
     }
 }
+
+/**
+ * Calcula las sesiones entre la fecha de creacion de acuerdos y la fecha de finalizacion de acuerdos
+ * @param Grupo_id
+ * @returns Numero de sesiones
+ */
+export async function calcularSesionesEntreAcuerdos(Grupo_id: number) {
+    try {
+        const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+        
+        const fechaInicio = new Date(acuerdoActual.Fecha_acuerdos); // 2021-01-01
+        const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
+        const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
+
+        const sesionesEntreAcuerdos = Math.round((fechaFin.getTime() - fechaInicio.getTime()) / (periodoReuniones * 7 * 24 * 60 * 60 * 1000));
+
+        return sesionesEntreAcuerdos;
+    } catch (error) {
+        const { code, message } = catch_common_error(error);
+        throw { code, message };
+    }
+}
+
+/**
+ * Calcula las sesiones restantes entre la fecha actual y la fecha de finalizacion de acuerdos
+ * @param Grupo_id
+ * @returns Numero de sesiones
+ * @returns 0 si ya no hay sesiones restantes
+ */
+export async function calcularSesionesParaAcuerdosFin(Grupo_id: number) {
+    try {
+        const acuerdoActual = await obtenerAcuerdoActual(Grupo_id);
+        
+        const fechaFin = new Date(acuerdoActual.Fecha_acuerdos_fin); // 2021-01-01
+        const periodoReuniones = acuerdoActual.Periodo_reuniones; // 4 semanas
+
+        const sesionesEntreAcuerdos = Math.round((fechaFin.getTime() - Date.now()) / (periodoReuniones * 7 * 24 * 60 * 60 * 1000));
+
+        return sesionesEntreAcuerdos;
+    } catch (error) {
+        const { code, message } = catch_common_error(error);
+        throw { code, message };
+    }
+}
