@@ -63,7 +63,14 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
             Codigo_grupo = grupo[0].Codigo_grupo
         }
 
-        const Sesiones_restantes = await calcularSesionesParaAcuerdosFin(Number(Grupo_id));
+        let Sesiones_restantes = 0
+
+        try{
+            const Sesiones_restantes = await calcularSesionesParaAcuerdosFin(Number(Grupo_id));
+        }catch{
+            //
+        }
+        
 
         return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes } });
     } catch (error) {
