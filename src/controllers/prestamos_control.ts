@@ -383,7 +383,7 @@ export const info_prestamos_socio = async (req: AdminRequest<any>, res) => {
         const sociosGrupo = await obtenerSociosGrupo(Grupo_id);
 
         // Obtener la informacion de los acuerdos actuales
-        const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
+        const { Creditos_simultaneos: Limite_prestamos, Tasa_interes } = await obtenerAcuerdoActual(Grupo_id);
 
         const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
 
@@ -395,7 +395,8 @@ export const info_prestamos_socio = async (req: AdminRequest<any>, res) => {
             Nombres: socio.Nombres,
             Prestamos_vigentes: Prestamos_vigentes.length,
             Limite_prestamos,
-            Limite_credito
+            Limite_credito,
+            Tasa_interes 
         }
 
         return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
