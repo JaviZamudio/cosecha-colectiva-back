@@ -16,7 +16,8 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         Fecha: Fecha_actual(),
         Caja: null,
         Acciones: null,
-        Grupo_id
+        Grupo_id,
+        Tipo_sesion : 1
     }
 
     if (campos_incompletos(campos_sesion)) {
@@ -26,7 +27,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
     try {
         //Verificar si es por lo menos el 50% de asistencia
         //extraer numero de socios
-        let query_s = "SELECT * FROM grupo_socio WHERE Grupo_id = ?";
+        let query_s = "SELECT * FROM grupo_socio WHERE Grupo_id = ? AND Status = 1";
         const [socios_grupo] = await db.query(query_s, [Grupo_id]) as [GrupoSocio[], any];
 
         //Contar cuantos estan presentes
@@ -45,9 +46,11 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
 
         // Buscar si existen acuerdos anteriores, si no, enviar sesion 0, Si los encuentra enviar 1 y si los encuentra pero ya paso la fecha enviar 2
         query = "SELECT * FROM acuerdos WHERE Grupo_id = ? AND Status = 1";
-        const [acuerdos] = await db.query(query, [Grupo_id]);
+        const [acuerdos] = await db.query(query, [Grupo_id]) as [Acuerdo[], any];
         let hoy = new Date(Date.now());
-        let tipo_sesion = (acuerdos[0].Fecha_acuerdos_fin < hoy) ? 1 : ((acuerdos[0].Fecha_acuerdos_fin >= hoy) ? 2 : 0);
+        // let tipo_sesion = (acuerdos[0].Fecha_acuerdos_fin < hoy) ? 1 : ((acuerdos[0].Fecha_acuerdos_fin >= hoy) ? 2 : 0);
+        // let fechaFinAcuerdos = acuerdos[0].Fecha_acuerdos_fin || undefined
+        let tipo_sesion = acuerdos.length === 0 ? 0 : ((new Date(acuerdos[0].Fecha_acuerdos_fin) < hoy) ? 1 : 2);
 
         // desactivar todas las sesiones que puedan estar activas para ese grupo
         query = "Update sesiones set Activa = 0 where Grupo_id = ?";
@@ -58,17 +61,23 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         await db.query(query, campos_sesion);
 
         await registrar_asistencias(Grupo_id, Socios);
-        await disminuir_sesiones(Grupo_id!);
-        await actualizar_intereses(Grupo_id!);
-        await agregar_interes_prestamo(Grupo_id!);
+        let sesionesRestantes = null;
+        if(tipo_sesion!==0){
+            await disminuir_sesiones(Grupo_id!);
+            await actualizar_intereses(Grupo_id!);
+            await agregar_interes_prestamo(Grupo_id!);
+        
 
-        // Ver si hay que mandar sesiones restantes (porcentaje de sesiones restantes >= 70%)
-        const sesionesEntreAcuerdos = await calcularSesionesEntreAcuerdos(Grupo_id!); // 10, por ejemplo
-        let sesionesRestantes: number | undefined = await calcularSesionesParaAcuerdosFin(Grupo_id!); // 8, por ejemplo
-        // Resetear sesiones restantes si se cumple la condicion (para no mandarlo)
-        if (sesionesRestantes / sesionesEntreAcuerdos > 0.8) {
-            sesionesRestantes = undefined;
+            // Ver si hay que mandar sesiones restantes (porcentaje de sesiones restantes >= 70%)
+            const sesionesEntreAcuerdos = await calcularSesionesEntreAcuerdos(Grupo_id!); // 10, por ejemplo
+            let sesionesRestantes: number | undefined = await calcularSesionesParaAcuerdosFin(Grupo_id!); // 8, por ejemplo
+            // Resetear sesiones restantes si se cumple la condicion (para no mandarlo)
+            if (sesionesRestantes / sesionesEntreAcuerdos > 0.8) {
+                sesionesRestantes = undefined;
+            }
         }
+
+        campos_sesion.Tipo_sesion= tipo_sesion;
 
         return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion, Sesiones_restantes: sesionesRestantes }).status(200);
     } catch (error) {
