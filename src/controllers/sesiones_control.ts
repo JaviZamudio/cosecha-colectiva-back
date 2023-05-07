@@ -56,6 +56,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         query = "Update sesiones set Activa = 0 where Grupo_id = ?";
         await db.query(query, Grupo_id);
 
+        campos_sesion.Tipo_sesion= tipo_sesion;
         // crear la nueva sesion
         query = "INSERT INTO sesiones SET ?";
         await db.query(query, campos_sesion);
@@ -76,8 +77,6 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
                 sesionesRestantes = undefined;
             }
         }
-
-        campos_sesion.Tipo_sesion= tipo_sesion;
 
         return res.json({ code: 200, message: 'Sesion creada y asistencias registradas', sesionType: tipo_sesion, Sesiones_restantes: sesionesRestantes }).status(200);
     } catch (error) {
