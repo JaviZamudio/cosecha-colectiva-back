@@ -31,5 +31,7 @@ router.post("/agendar", authAdmin, agendar_sesion);
 router.post("/socios/:Socio_id/firma", authAdmin, recoger_firma);
 // Obtener una firma de usuario en una sesion
 router.get("/:Sesion_id/socios/:Socio_id/firma", authAdmin, get_firma);
+// Resumen de la sesion para el grupo
+router.get("/resumen", authAdmin, ); // TODO: Implementar
 
 export { router as sesionesRoutes };

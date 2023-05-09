@@ -283,11 +283,11 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
         const acuerdo = (await con.query(query2, [grupo.Grupo_id]))[0][0] as Acuerdo;
         // si hay acuerdo actual, se le asignan las acciones
-        if(acuerdo!== undefined){
+        if (acuerdo !== undefined) {
             comprar_acciones(resultado_socio.insertId, grupo.Grupo_id, acuerdo.Minimo_aportacion, con);
         }
         con.commit();
-        return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id : grupo.Grupo_id });
+        return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id: grupo.Grupo_id });
     } catch (error) {
         con.rollback();
         const { message, code } = catch_common_error(error);
@@ -440,7 +440,7 @@ export const modificar_socio = async (req: SocioRequest<any>, res: Response) => 
 
 export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = Number(req.id_grupo_actual);
-    
+
     try {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
@@ -456,7 +456,7 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
         group by ganancias.Socio_id`;
         const [ganancias] = await db.query(query, [Grupo_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Ganancias obtenidas', data : ganancias});
+        return res.status(200).json({ code: 200, message: 'Ganancias obtenidas', data: ganancias });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -466,7 +466,7 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
 
 export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = Number(req.id_grupo_actual);
-    
+
     try {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
@@ -474,9 +474,9 @@ export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
         //Obetener el nombre y apellidos de los socios y su status en el grupo
         let query = "SELECT so.Socio_id, CONCAT(so.Nombres, ' ', so.Apellidos) AS Nombre, gs.Status FROM socios so JOIN grupo_socio gs ON so.Socio_id = gs.Socio_id WHERE gs.Grupo_id = ? AND gs.Status != 2";
         const [socios] = await db.query(query, [Grupo_id]);
-        
 
-        return res.status(200).json({ code: 200, message: 'Socios obtenidos', socios : socios});
+
+        return res.status(200).json({ code: 200, message: 'Socios obtenidos', socios: socios });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -492,12 +492,81 @@ export const post_usuario_status = async (req: AdminRequest<GrupoSocio>, res) =>
     try {
         // Validar que haya una sesion activa
         const sesionActual = await obtenerSesionActual(Grupo_id);
-        
+
         //Actualizar el status de un socio dentro de un grupo
         let query = "UPDATE grupo_socio SET Status = ? WHERE Socio_id = ? AND Grupo_id = ?";
-        await db.query(query, [Status,Socio_id, Grupo_id]);
+        await db.query(query, [Status, Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Status de socio actualizado'});
+        return res.status(200).json({ code: 200, message: 'Status de socio actualizado' });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
+// ResBody = 
+/**
+ *
+prestamosPagados
+multas pagadas
+accionesCompradas
+accionesRetiradas
+ */
+export const miniResumen = async (req: AdminRequest<any>, res) => {
+    const { id_grupo_actual: Grupo_id } = req;
+    const Socio_id = Number(req.params.Socio_id);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id!);
+        const socioGrupo = socioEnGrupo(Socio_id, Grupo_id!);
+
+        // Calcular el total de prestamos pagados en la sesion por medio de las transacciones
+        // select cuenta de prestamos en los que la sesion sea la sesion actual, el socio sea el socio actual y el Catalogo_id = "ABONO_PRESTAMO"
+        let query = `
+        SELECT COUNT(*) as prestamosPagados
+        FROM transacciones
+        where transacciones.Sesion_id = ?
+        AND transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'ABONO_PRESTAMO'
+        `;
+        const { prestamosPagados } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
+
+        // Calcular el total de multas pagadas en la sesion por medio de las transacciones
+        // catalogo_id = 'PAGO_MULTA'
+        query = `
+        SELECT COUNT(*) as multasPagadas
+        FROM transacciones
+        where transacciones.Sesion_id = ?
+        AND transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'PAGO_MULTA'
+        `;
+        const { multasPagadas } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
+
+        // Calcular el total de acciones compradas en la sesion por medio de las transacciones
+        // catalogo_id = 'COMPRA_ACCION', obtener la suma de transaccion.Cantidad_movimiento
+        query = `
+        SELECT SUM(transacciones.Cantidad_movimiento) as accionesCompradas
+        FROM transacciones
+        where transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'COMPRA_ACCION'
+        AND transacciones.Sesion_id = ?
+        `;
+        const { accionesCompradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
+
+        // Calcular el total de acciones retiradas en la sesion por medio de las transacciones
+        // catalogo_id = 'RETIRO_ACCION', obtener la suma de transaccion.Cantidad_movimiento
+        query = `
+        SELECT SUM(transacciones.Cantidad_movimiento) as accionesRetiradas
+        FROM transacciones
+        where transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'RETIRO_ACCION'
+        AND transacciones.Sesion_id = ?
+        `;
+        const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
+
+        return res.status(200).json({ code: 200, message: 'Resumen obtenido', data: { prestamosPagados, multasPagadas, accionesCompradas: Number(accionesCompradas), accionesRetiradas: Number(accionesRetiradas) } });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
