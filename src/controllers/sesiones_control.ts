@@ -6,6 +6,7 @@ import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
 import { aws_bucket_name } from "../config/config";
 import { s3 } from "../config/aws";
+import { RowDataPacket } from "mysql2";
 
 //crear nueva sesion
 export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": number, "Presente": 1 | 0 }[] }>, res) => {
@@ -17,7 +18,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         Caja: null,
         Acciones: null,
         Grupo_id,
-        Tipo_sesion : 1
+        Tipo_sesion: 1
     }
 
     if (campos_incompletos(campos_sesion)) {
@@ -31,7 +32,7 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         const [socios_grupo] = await db.query(query_s, [Grupo_id]) as [GrupoSocio[], any];
 
         //Contar cuantos estan presentes
-        let contador_socios = Socios.reduce((acc, socio) => socio.Presente === 1 ? acc + 1 : acc, 0); 
+        let contador_socios = Socios.reduce((acc, socio) => socio.Presente === 1 ? acc + 1 : acc, 0);
 
         let minimo_asistencia = Math.ceil(socios_grupo.length / 2);
         if (contador_socios < minimo_asistencia) {
@@ -56,18 +57,18 @@ export const crear_sesion = async (req: AdminRequest<{ Socios: { "Socio_id": num
         query = "Update sesiones set Activa = 0 where Grupo_id = ?";
         await db.query(query, Grupo_id);
 
-        campos_sesion.Tipo_sesion= tipo_sesion;
+        campos_sesion.Tipo_sesion = tipo_sesion;
         // crear la nueva sesion
         query = "INSERT INTO sesiones SET ?";
         await db.query(query, campos_sesion);
 
         await registrar_asistencias(Grupo_id, Socios);
         let sesionesRestantes = null;
-        if(tipo_sesion!==0){
+        if (tipo_sesion !== 0) {
             await disminuir_sesiones(Grupo_id!);
             await actualizar_intereses(Grupo_id!);
             await agregar_interes_prestamo(Grupo_id!);
-        
+
 
             // Ver si hay que mandar sesiones restantes (porcentaje de sesiones restantes >= 70%)
             const sesionesEntreAcuerdos = await calcularSesionesEntreAcuerdos(Grupo_id!); // 10, por ejemplo
@@ -111,9 +112,9 @@ export const enviar_inasistencias_sesion = async (req, res) => {
 
 //Registrar retardos
 export const registrar_retardos = async (req, res) => {
-    const Grupo_id  = req.id_grupo_actual;
+    const Grupo_id = req.id_grupo_actual;
     const { Socios } = req.body;
-    
+
     //comprobar que haya Sesion_id y Socios
     if (!Grupo_id || !Socios) {
         console.log(Grupo_id, Socios);
@@ -138,7 +139,7 @@ export const registrar_retardos = async (req, res) => {
                 let query = "UPDATE asistencias SET Presente = 2 WHERE Sesion_id = ? AND Socio_id = ? AND Presente != 1";
                 const [upd] = await db.query(query, [sesion.Sesion_id, Socios[i]]);
                 const json: any = upd;
-                if(json.affectedRows===0){
+                if (json.affectedRows === 0) {
                     retardos_con_error.push({
                         Socio_id: Socios[i],
                         error: 'Ya tiene asistencia'
@@ -229,12 +230,12 @@ export const get_lista_socios = async (req, res) => {
 
 export const get_conteo_dinero = async (req, res) => {
     const Grupo_id = req.params.Grupo_id
-    if(!Grupo_id){
+    if (!Grupo_id) {
         return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
     }
     try {
         const sesion = await obtenerSesionActual(Grupo_id);
-        return res.json({ code: 200, data : sesion.Caja, }).status(200);
+        return res.json({ code: 200, data: sesion.Caja, }).status(200);
         //preguntar si el status al final funciona o tiene que ser al principio
     } catch (error) {
         const { code, message } = getCommonError(error);
@@ -258,7 +259,7 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
         const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma});
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -285,7 +286,7 @@ export const recoger_firma = async (req, res) => {
         // Verificar que la sesion existe
         const sesionActual = await obtenerSesionActual(id_grupo_actual!);
 
-        const params: any & {Body?: any} = {
+        const params: any & { Body?: any } = {
             Bucket: aws_bucket_name,
             Key: `firmas/${sesionActual.Sesion_id}/${socio.Socio_id}.png`,
             Body: Firma,
@@ -337,6 +338,69 @@ export const get_firma = async (req, res) => {
         console.log(data.Body?.toString());
 
         return res.json({ code: 200, message: 'Firma obtenida', data: data.Body?.toString() }).status(200);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+// Resumen de sesion:
+/**
+ * Caja_inicial: caja de la sesion anterior ✅
+ * Caja_final: caja de la sesion actual ✅
+ * Pago_multas: suma de las multas pagadas en la sesion actual ✅
+ * Pago_prestamos: suma de los prestamos pagados en la sesion actual ✅
+ * Compra_acciones: suma de las acciones compradas en la sesion actual ✅
+ * Total_entradas: suma de las entradas de dinero en la sesion actual (Pago_multas + Pago_prestamos + Compra_acciones) - pendiente
+ * Prestamos_dados: suma de los prestamos dados en la sesion actual ✅
+ * Acciones_vendidas: suma de las acciones vendidas en la sesion actual ✅
+ * Total_salidas: suma de las salidas de dinero en la sesion actual (Prestamos_dados + Acciones_vendidas) - pendiente
+ */
+export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
+    const { id_grupo_actual } = req;
+    try {
+        const sesionActual = await obtenerSesionActual(id_grupo_actual!);
+
+        // Calcular el total de acciones retiradas en la sesion por medio de las transacciones
+        // catalogo_id = 'RETIRO_ACCION', obtener la suma de transaccion.Cantidad_movimiento
+        // query = `
+        // SELECT SUM(transacciones.Cantidad_movimiento) as accionesRetiradas
+        // FROM transacciones
+        // where transacciones.Socio_id = ?
+        // AND transacciones.Catalogo_id = 'RETIRO_ACCION'
+        // AND transacciones.Sesion_id = ?
+        // `;
+        // const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
+
+        // Caja_inicial: caja de la sesion anterior
+        let query = "SELECT Caja from sesiones WHERE Grupo_id = ? AND Activa = 0 ORDER BY Fecha desc, Sesion_id desc LIMIT 1";
+        const { Caja: Caja_inicial } = (await db.query<RowDataPacket[]>(query, [id_grupo_actual]))[0][0];
+
+        // Caja_final: caja de la sesion actual
+        const { Caja: Caja_final } = sesionActual;
+
+        query = `
+        SELECT 
+            SUM(CASE WHEN transacciones.Catalogo_id = 'PAGO_MULTA' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Pago_multas,
+            SUM(CASE WHEN transacciones.Catalogo_id = 'ABONO_PRESTAMO' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Pago_prestamos,
+            SUM(CASE WHEN transacciones.Catalogo_id = 'COMPRA_ACCION' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Compra_acciones,
+            Abs(SUM(CASE WHEN transacciones.Catalogo_id = 'ENTREGA_PRESTAMO' THEN transacciones.Cantidad_movimiento ELSE 0 END)) AS Prestamos_dados,
+            SUM(CASE WHEN transacciones.Catalogo_id = 'RETIRO_ACCION' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Acciones_vendidas
+        FROM 
+            transacciones
+        WHERE 
+            transacciones.Sesion_id = ?
+        `;
+        const { Pago_multas, Pago_prestamos, Compra_acciones, Prestamos_dados, Acciones_vendidas } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id]))[0][0];
+
+        // Total_entradas: suma de las entradas de dinero en la sesion actual (Pago_multas + Pago_prestamos + Compra_acciones)
+        const Total_entradas = Pago_multas + Pago_prestamos + Compra_acciones;
+
+        // Total_salidas: suma de las salidas de dinero en la sesion actual (Prestamos_dados + Acciones_vendidas)
+        const Total_salidas = Prestamos_dados + Acciones_vendidas;
+
+        return res.json({ code: 200, message: 'Resumen de sesion obtenido', data: { Caja_inicial, Caja_final, Pago_multas, Pago_prestamos, Compra_acciones, Total_entradas, Prestamos_dados, Acciones_vendidas, Total_salidas } }).status(200);
+
     } catch (error) {
         const { code, message } = getCommonError(error);
         return res.json({ code, message }).status(code);
