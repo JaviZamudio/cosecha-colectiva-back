@@ -2,7 +2,7 @@ import { Router } from "express";
 import { acciones_socio, registrar_compra_acciones, retiro_acciones } from "../../../controllers/acciones_control";
 import { crear_multa } from "../../../controllers/multas_control";
 import { ampliar_prestamo, crear_prestamo, get_prestamos_nopagados_socio, info_prestamo, info_prestamos_ampliables, info_prestamos_socio } from "../../../controllers/prestamos_control";
-import { retirar_ganancias, get_usuario_ganancias, get_usuario_status, post_usuario_status } from "../../../controllers/socios_control";
+import { retirar_ganancias, get_usuario_ganancias, get_usuario_status, post_usuario_status, miniResumen } from "../../../controllers/socios_control";
 import { authAdmin } from "../../../middleware/auth";
 
 // Router empezando en /api/grupos/socios
@@ -36,5 +36,7 @@ router.post("/:Socio_id/acciones", authAdmin, registrar_compra_acciones);
 router.post("/:Socio_id/acciones/retirar", authAdmin, retiro_acciones);
 // Retirar ganancias
 router.patch("/:Socio_id/ganancias", authAdmin, retirar_ganancias)
+// Resumen de la sesion para el socio
+router.get("/:Socio_id/resumenSesion", authAdmin, miniResumen);
 
 export { router as sociosRoutes }
