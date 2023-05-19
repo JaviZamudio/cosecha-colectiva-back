@@ -373,13 +373,18 @@ export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
         // const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
 
         // Caja_inicial: caja de la sesion anterior
-        let query = "SELECT Caja from sesiones WHERE Grupo_id = ? AND Activa = 0 ORDER BY Fecha desc, Sesion_id desc LIMIT 1";
-        const { Caja: Caja_inicial } = (await db.query<RowDataPacket[]>(query, [id_grupo_actual]))[0][0];
-
+        let Caja_inicial = 0;
+        try{
+            let query = "SELECT Caja from sesiones WHERE Grupo_id = ? AND Activa = 0 ORDER BY Fecha desc, Sesion_id desc LIMIT 1";
+            const { Caja: Caja_inicial } = (await db.query<RowDataPacket[]>(query, [id_grupo_actual]))[0][0];
+        }catch{
+            //se queda la caja en 0
+        }
+        
         // Caja_final: caja de la sesion actual
         const { Caja: Caja_final } = sesionActual;
 
-        query = `
+        let query = `
         SELECT 
             SUM(CASE WHEN transacciones.Catalogo_id = 'PAGO_MULTA' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Pago_multas,
             SUM(CASE WHEN transacciones.Catalogo_id = 'ABONO_PRESTAMO' THEN transacciones.Cantidad_movimiento ELSE 0 END) AS Pago_prestamos,
