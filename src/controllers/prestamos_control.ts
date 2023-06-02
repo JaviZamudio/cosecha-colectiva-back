@@ -94,7 +94,11 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
         // Crear Registro en prestamos
         await generar_prestamo(Grupo_id, campos_prestamo, con);
         await con.commit();
-        return res.status(200).json({ code: 200, message: "Prestamo creado" });
+
+        let query2 = "SELECT Nombres, Apellidos FROM socios WHERE Socio_id = ?";
+        const [socio_dat] = await db.query(query2, [Socio_id]);
+
+        return res.status(200).json({ code: 200, message: "Prestamo creado", data: {'Nombre': socio_dat[0].Nombres + ' ' + socio_dat[0].Apellidos} });
     } catch (error) {
         console.log('holiwi')
         await con.rollback();
