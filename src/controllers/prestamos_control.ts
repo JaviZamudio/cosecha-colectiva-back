@@ -251,7 +251,10 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         `
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Prestamos obtenidos', data: prestamos });
+        let query2 = "SELECT Nombres, Apellidos FROM socios WHERE Socio_id = ?";
+        const [socio_dat] = await db.query(query2, [Socio_id]);
+
+        return res.status(200).json({ code: 200, message: 'Prestamos obtenidos', data: prestamos,name:socio_dat[0].Nombres + ' ' + socio_dat[0].Apellidos });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -437,7 +440,7 @@ export const info_prestamos_ampliables = async (req: AdminRequest<any>, res) => 
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
         const prestamos = await obtener_prestamos_ampliables(Grupo_id, Socio_id);
-
+        
         const data = prestamos.map((prestamo) => {
             const { Prestamo_id, Fecha_inicial, Interes_generado, Interes_pagado, Monto_prestamo  } = prestamo;
             return {
@@ -449,7 +452,10 @@ export const info_prestamos_ampliables = async (req: AdminRequest<any>, res) => 
             }
         })
 
-        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });
+        let query2 = "SELECT Nombres, Apellidos FROM socios WHERE Socio_id = ?";
+        const [socio_dat] = await db.query(query2, [Socio_id]);
+
+        return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data,name: socio_dat[0].Nombres + ' ' + socio_dat[0].Apellidos});
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -469,7 +475,7 @@ export const info_prestamo = async (req: AdminRequest<any>, res) => {
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
         // Obtener la informacion de los acuerdos actuales
-        const { Creditos_simultaneos: Limite_prestamos } = await obtenerAcuerdoActual(Grupo_id);
+        const { Creditos_simultaneos: Limite_prestamos,Tasa_interes } = await obtenerAcuerdoActual(Grupo_id);
 
         const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
 
@@ -488,6 +494,7 @@ export const info_prestamo = async (req: AdminRequest<any>, res) => {
             Limite_credito_actual,
             Deuda_actual,
             Nombres: socio.Nombres + " " + socio.Apellidos,
+            Tasa_interes
         }
 
         return res.status(200).json({ code: 200, message: 'Informacion obtenida', data: data });

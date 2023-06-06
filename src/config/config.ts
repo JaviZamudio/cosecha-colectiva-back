@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 
 config();
-
+console.log('---------',process.env.PORT)
 export const port = process.env.PORT as string;
 export const db_url = process.env.CLEARDB_DATABASE_URL as string;
 export const host = process.env.DB_HOST as string;
