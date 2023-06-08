@@ -12,7 +12,7 @@ import { crear_transaccion } from "./Transacciones.services";
  * @returns Objeto de tipo OkPacket
  * @throws Error si no se puede comprar las acciones
  */
-export const comprar_acciones = async (Socio_id, Grupo_id, Cantidad, con?: PoolConnection) => {
+export const comprar_acciones = async (Socio_id, Grupo_id, Cantidad, con?: PoolConnection,isJoin=false) => {
     if(!con) {
         con = await db.getConnection();
     }
@@ -35,6 +35,7 @@ export const comprar_acciones = async (Socio_id, Grupo_id, Cantidad, con?: PoolC
         Catalogo_id: "COMPRA_ACCION",
         Socio_id,
         Grupo_id,
+        isJoin
     }, con);
 }
 

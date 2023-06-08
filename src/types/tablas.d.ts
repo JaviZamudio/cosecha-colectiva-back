@@ -156,7 +156,7 @@ interface Transaccion {
     Cantidad_movimiento: number,
     Caja: number,
     Timestamp?: string,
-    Sesion_id: number,
+    Sesion_id?: number,
     Socio_id: number,
     Acuerdo_id: number,
     Catalogo_id: string

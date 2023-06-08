@@ -9,7 +9,7 @@ import { obtenerSesionActual, obtener_caja_sesion } from "./Sesiones.services";
  * @param con Conexion para hacer queries, para transacciones.
  * @returns El objeto de transaccion resultante
  */
-export async function crear_transaccion({Cantidad_movimiento, Catalogo_id, Socio_id, Grupo_id}: {Cantidad_movimiento: number, Catalogo_id: string, Socio_id: number, Grupo_id: number}, con?: PoolConnection | Pool) {
+export async function crear_transaccion({Cantidad_movimiento, Catalogo_id, Socio_id, Grupo_id,isJoin = false}: {Cantidad_movimiento: number, Catalogo_id: string, Socio_id: number, Grupo_id: number, isJoin?: boolean}, con?: PoolConnection | Pool) {
     // Hacer con = db si es que no es undefined
     if (con === undefined) {
         con = db;
@@ -21,18 +21,34 @@ export async function crear_transaccion({Cantidad_movimiento, Catalogo_id, Socio
     if(sesionActual.Caja + Cantidad_movimiento < 0) {
         throw "La caja no puede quedar menor a 0";
     }
-
-    const campos_transaccion: Transaccion = {
-        Cantidad_movimiento,
-        Catalogo_id,
-        Socio_id,
-        Acuerdo_id: acuerdoActual.Acuerdo_id!,
-        // Caja: sesionActual.Caja + Cantidad_movimiento // caja como numero
-        Caja: Number(sesionActual.Caja) + Number(Cantidad_movimiento), // caja como string
-        Sesion_id: sesionActual.Sesion_id!,
+    // cuando se compra una accion de un socio porq se esta uniendo al grupo
+    console.log(isJoin)
+    let campos_transaccion : Transaccion
+    if(isJoin) {
+        console.log('e Comprado accion sin ID')
+        campos_transaccion = {
+            Cantidad_movimiento,
+            Catalogo_id,
+            Socio_id,
+            Acuerdo_id: acuerdoActual.Acuerdo_id!,
+            // Caja: sesionActual.Caja + Cantidad_movimiento // caja como numero
+            Caja: Number(sesionActual.Caja) + Number(Cantidad_movimiento), // caja como string
+        }
+    } else {
+        campos_transaccion = {
+            Cantidad_movimiento,
+            Catalogo_id,
+            Socio_id,
+            Acuerdo_id: acuerdoActual.Acuerdo_id!,
+            // Caja: sesionActual.Caja + Cantidad_movimiento // caja como numero
+            Caja: Number(sesionActual.Caja) + Number(Cantidad_movimiento), // caja como string
+            Sesion_id: sesionActual.Sesion_id!,
+        }
     }
 
+   
 
+    // aqui esta el console.log
     console.log({campos_transaccion});
 
     // Insertar Transaccion

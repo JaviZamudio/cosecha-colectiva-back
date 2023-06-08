@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 
 // Crear un grupo
 router.post("/", authSocio, crear_grupo);
-// Crear un grupo
+// Obten un grupo
 router.get("/:Grupo_id", authSocioGrupo, get_info_grupo);
 
 // Sub-Recursos

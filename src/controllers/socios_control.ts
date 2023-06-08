@@ -244,7 +244,7 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
     // si el socio no esta en el grupo, se agrega
     // si el socio ya esta en el grupo, error.
     // Si el grupo es nuevo (no tiene acuerdos) solo se agrega al socio
-    // Si el grupo ya tiene acuerdos, se agrega al socio y se asignan las acciones
+    // Si el grupo ya tiene acuerdos, se agrega al socio y se asignan las acciones **error
 
     const { id_socio_actual } = req;
     const { Codigo_grupo } = req.body;
@@ -279,14 +279,18 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
 
         query = "INSERT INTO grupo_socio SET ?";
         const [resultado_socio] = await con.query(query, campos_grupo_socio) as [OkPacket, any];
-
+        console.log(resultado_socio)
         let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
         const acuerdo = (await con.query(query2, [grupo.Grupo_id]))[0][0] as Acuerdo;
+        // AQUI ES DONDE COMPRA LAS ACCIONES
         // si hay acuerdo actual, se le asignan las acciones
+        // para este caso permitir null en la sesion porq no necesita de una sesion para comprar acciones si se esta uniendo
+        //o como deberia funcionar en persona??
         if (acuerdo !== undefined) {
-            comprar_acciones(resultado_socio.insertId, grupo.Grupo_id, acuerdo.Minimo_aportacion, con);
+            comprar_acciones(id_socio_actual!, grupo.Grupo_id, acuerdo.Minimo_aportacion, con,true);
         }
         con.commit();
+        
         return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id: grupo.Grupo_id });
     } catch (error) {
         con.rollback();
