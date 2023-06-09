@@ -262,8 +262,10 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         const [ganancias] = await db.query(query6, [Socio_id, Grupo_id]);
         let query7 = "SELECT Tipo_socio, Status FROM grupo_socio WHERE Socio_id = ? AND Grupo_id = ?";
         const [usuario] = await db.query(query7, [Socio_id, Grupo_id]);
+        let query8 = "SELECT asistencias.Presente, sesiones.Tipo_sesion FROM asistencias JOIN sesiones ON sesiones.Sesion_id = asistencias.Sesion_id WHERE asistencias.Socio_id = ? AND sesiones.Grupo_id = ?";
+        const [sesion] = await db.query(query8, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma, gananciasAcumuladas: ganancias[0].gananciasAcumuladas, rol: usuario[0].Tipo_socio, status: usuario[0].Status });
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma, gananciasAcumuladas: ganancias[0].gananciasAcumuladas, rol: usuario[0].Tipo_socio, status: usuario[0].Status, paseLista: sesion[0].Presente, Tipo_sesion: sesion[0].Tipo_sesion });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
