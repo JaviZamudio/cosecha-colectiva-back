@@ -417,3 +417,24 @@ export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
         return res.json({ code, message }).status(code);
     }
 }
+
+export const observacion_sesion_socio = async (req: AdminRequest<{ Observacion: string }>, res) => {
+    const { Socio_id } = req.params;
+    const { id_grupo_actual } = req;
+    const { Observacion } = req.body;
+
+    try {
+        const sesionActual = await obtenerSesionActual(id_grupo_actual!);
+
+
+        let query = "UPDATE asistencias SET Observaciones = ? WHERE Socio_id = ? AND Sesion_id = ?";
+        const result = await db.query(query, [Observacion, Socio_id, sesionActual.Sesion_id]);
+
+        // console.log(`Actualizando observacion de sesion de socio ${Socio_id} en sesion ${sesionActual.Sesion_id} a ${Observacion}`)
+
+        return res.json({ code: 200, message: 'Firma subida' }).status(200);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
