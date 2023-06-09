@@ -262,6 +262,31 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
     }
 }
 
+export const get_prestamos_nopagados = async (req: AdminRequest<Grupo>, res) => {
+    const Grupo_id = Number(req.id_grupo_actual);
+
+    try {
+        // Validar que haya una sesion activa
+        const sesionActual = await obtenerSesionActual(Grupo_id);
+
+        //Total de prestamos no pagados del grupo
+        let query = `
+            SELECT socios.Nombres, socios.Apellidos
+            FROM prestamos
+            JOIN socios ON prestamos.Socio_id = socios.Socio_id
+            JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
+            WHERE prestamos.Estatus_prestamo = 1 AND sesiones.Grupo_id = ?
+        `
+        const [socios] = await db.query(query, [Grupo_id]);
+
+        return res.status(200).json({ code: 200, message: 'socios obtenidos', name:socios[0].Nombres + ' ' + socios[0].Apellidos });
+    } catch (error) {
+        console.log(error);
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
+
 // controlador para obtener informacion de los prestamos de todos los socios
 // informacion por socio: id, nombre, # prestamos vigentes, # prestamos ampliables, limite de prestamos ✅
 export const info_prestamos_general = async (req: AdminRequest<any>, res) => {

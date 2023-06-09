@@ -254,15 +254,21 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         const [sesiones] = await db.query(query2, Grupo_id);
         let query3 = "SELECT acciones FROM grupo_socio WHERE Grupo_id = ? AND Socio_id = ?";
         const [acciones] = await db.query(query3, [Grupo_id, Socio_id]);
-        let query4 = "SELECT SUM(Monto_prestamo) as suma FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0";
+        let query4 = "SELECT Monto_prestamo as suma FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0";
         const [prestamos] = await db.query(query4, [Socio_id, Grupo_id]);
-        let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
+        let query5 = "SELECT Monto_multa as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
         const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
+        let query6 = "SELECT Monto_ganancia as gananciasAcumuladas FROM ganancias JOIN sesiones ON ganancias.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND sesiones.Grupo_id = ?";
+        const [ganancias] = await db.query(query6, [Socio_id, Grupo_id]);
+        let query7 = "SELECT Tipo_socio, Status FROM grupo_socio WHERE Socio_id = ? AND Grupo_id = ?";
+        const [usuario] = await db.query(query7, [Socio_id, Grupo_id]);
+        let query8 = "SELECT asistencias.Presente, sesiones.Tipo_sesion FROM asistencias JOIN sesiones ON sesiones.Sesion_id = asistencias.Sesion_id WHERE asistencias.Socio_id = ? AND sesiones.Grupo_id = ?";
+        const [sesion] = await db.query(query8, [Socio_id, Grupo_id]);
 
-        let query6 = "SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 ORDER BY Fecha_final DESC LIMIT 1"
-        const [proxAdeudo] = await db.query(query6, [Socio_id]);
+        let query9 = "SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 ORDER BY Fecha_final DESC LIMIT 1"
+        const [proxAdeudo] = await db.query(query9, [Socio_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma,proxAdeudo });
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma, gananciasAcumuladas: ganancias[0].gananciasAcumuladas, rol: usuario[0].Tipo_socio, status: usuario[0].Status, paseLista: sesion[0].Presente, Tipo_sesion: sesion[0].Tipo_sesion,proxAdeudo });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
@@ -409,6 +415,27 @@ export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
 
         return res.json({ code: 200, message: 'Resumen de sesion obtenido', data: { Caja_inicial, Caja_final, Pago_multas, Pago_prestamos, Compra_acciones, Total_entradas, Prestamos_dados, Acciones_vendidas, Total_salidas } }).status(200);
 
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}
+
+export const observacion_sesion_socio = async (req: AdminRequest<{ Observacion: string }>, res) => {
+    const { Socio_id } = req.params;
+    const { id_grupo_actual } = req;
+    const { Observacion } = req.body;
+
+    try {
+        const sesionActual = await obtenerSesionActual(id_grupo_actual!);
+
+
+        let query = "UPDATE asistencias SET Observaciones = ? WHERE Socio_id = ? AND Sesion_id = ?";
+        const result = await db.query(query, [Observacion, Socio_id, sesionActual.Sesion_id]);
+
+        // console.log(`Actualizando observacion de sesion de socio ${Socio_id} en sesion ${sesionActual.Sesion_id} a ${Observacion}`)
+
+        return res.json({ code: 200, message: 'Firma subida' }).status(200);
     } catch (error) {
         const { code, message } = getCommonError(error);
         return res.json({ code, message }).status(code);

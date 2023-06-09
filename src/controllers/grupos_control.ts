@@ -83,3 +83,8 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
         return res.status(code).json({ code, message });
     }
 }
+
+export const num_telefono = async (req, res) => {
+   let telefono = '4423171882'
+   return res.status(200).json({ code: 200, message: 'telefono enviado', telefono: telefono });
+}
