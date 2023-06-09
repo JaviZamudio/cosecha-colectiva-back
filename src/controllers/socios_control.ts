@@ -335,9 +335,7 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
     const { id_socio_actual } = req;
 
     try {
-        // members,status,last sesion, next sesion
         
-
         const grupos: Grupo[] = await grupos_del_socio(id_socio_actual!);
         const data: { Grupo_id: number, Nombre: string, miembros?: number,Status?: number,previousSesion?:string,nextSesion?:string,Rol_socio: "ADMIN" | "SOCIO" | "SUPLENTE" | "CREADOR" }[] = [];
         for (const grupo of grupos) {
@@ -394,28 +392,6 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
 
             data[index] = {...data[index],previousSesion,nextSesion}
         })
-        console.log(data)
-        // console.log(previousSesionNextSesionDate)
-        // console.log(previousSesionNextSesionDate)
-        // groupCounts.forEach((count,index) => {
-
-        //     data[index] = {...data[index],miembros:count}
-        // })
-        // console.log(data)
-
-        // const promises = data.map(async grupo=>{
-        //     let query = `SELECT COUNT(*) AS cantidad
-        //         FROM grupo_socio
-        //         WHERE Grupo_id = ?`
-        //     const result = await db.query(query, [grupo.Grupo_id]);
-        //     // console.log(result[0][0].cantidad)
-        //     return result[0][0].cantidad
-        // })
-        // const groupCounts = await Promise.all(promises) 
-        // groupCounts.forEach((count,index) => {
-
-        //     data[index] = {...data[index],miembros:count}
-        // })
         
 
         return res.status(200).json({ code: 200, message: "Información de los grupos", data });
@@ -552,7 +528,10 @@ export const get_usuario_status = async (req: AdminRequest<Grupo>, res) => {
         const [socios] = await db.query(query, [Grupo_id]);
 
 
-        return res.status(200).json({ code: 200, message: 'Socios obtenidos', socios: socios });
+        let query2 = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
+        const [grupo] = await db.query(query2, [Grupo_id]);
+
+        return res.status(200).json({ code: 200, message: 'Socios obtenidos', socios: socios ,nombreGrupo:grupo[0].Nombre_grupo});
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);

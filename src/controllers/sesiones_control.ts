@@ -259,7 +259,10 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
         const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
 
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma });
+        let query6 = "SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 ORDER BY Fecha_final DESC LIMIT 1"
+        const [proxAdeudo] = await db.query(query6, [Socio_id]);
+
+        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesiones: sesiones, dineroTotalAhorrado: acciones[0].acciones, dineroTotalDeuda: prestamos[0].suma + multas[0].suma,proxAdeudo });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
