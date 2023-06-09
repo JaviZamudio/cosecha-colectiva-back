@@ -335,8 +335,11 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
     const { id_socio_actual } = req;
 
     try {
+        // members,status,last sesion, next sesion
+        
+
         const grupos: Grupo[] = await grupos_del_socio(id_socio_actual!);
-        const data: { Grupo_id: number, Nombre: string, Rol_socio: "ADMIN" | "SOCIO" | "SUPLENTE" | "CREADOR" }[] = [];
+        const data: { Grupo_id: number, Nombre: string, miembros?: number,Status?: number,previousSesion?:string,nextSesion?:string,Rol_socio: "ADMIN" | "SOCIO" | "SUPLENTE" | "CREADOR" }[] = [];
         for (const grupo of grupos) {
             data.push({
                 Grupo_id: grupo.Grupo_id!,
@@ -344,6 +347,76 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
                 Rol_socio: (await obtenerGrupoSocio(id_socio_actual!, grupo.Grupo_id!)).Tipo_socio,
             });
         }
+        // miembros y estatus
+        const membersStatusPerGroupPromise = data.map(async grupo=>{
+            let query = `SELECT COUNT(*) AS cantidad,Status
+                FROM grupo_socio
+                WHERE Grupo_id = ?`
+            const result = await db.query(query, [grupo.Grupo_id]);
+            // console.log(result[0][0].cantidad)
+            return result[0][0]
+        })
+
+        const membersStatusPerGroup = await Promise.all(membersStatusPerGroupPromise) 
+        membersStatusPerGroup.forEach((element,index) => {
+
+            data[index] = {...data[index],miembros:element.cantidad,Status:element.Status}
+        })
+        // Proxima y ultima sesion
+        const previousSesionNextSesionDatePromise = data.map(async grupo=>{
+            let query = `SELECT Fecha_prox_reunion 
+                FROM sesiones 
+                WHERE Grupo_id = ? 
+                ORDER BY Fecha_prox_reunion DESC 
+                LIMIT 2;`
+            const result = await db.query(query, [grupo.Grupo_id]) as RowDataPacket[]
+            // console.log(result[0])
+            // return result[0]
+            return result[0];
+
+        })
+        //  primer elemento es proxima reunion, ultimo es sesion pasada,
+        //  si solo hay 1 elemento es que fue de sesion primeriza
+        // si no hay es que el grupo no tiene sesiones todavia
+        const previousSesionNextSesionDate= await Promise.all(previousSesionNextSesionDatePromise) 
+        previousSesionNextSesionDate.forEach((dates,index) => {
+            // solo hay proxima
+            let previousSesion = ''
+            let nextSesion = ''
+            if(dates.length==1){
+                nextSesion = dates[0].Fecha_prox_reunion
+                
+            } // hay anterior y proxima 
+            else if(dates.length==2){
+                previousSesion = dates[1].Fecha_prox_reunion
+                nextSesion = dates[0].Fecha_prox_reunion
+            }  
+
+            data[index] = {...data[index],previousSesion,nextSesion}
+        })
+        console.log(data)
+        // console.log(previousSesionNextSesionDate)
+        // console.log(previousSesionNextSesionDate)
+        // groupCounts.forEach((count,index) => {
+
+        //     data[index] = {...data[index],miembros:count}
+        // })
+        // console.log(data)
+
+        // const promises = data.map(async grupo=>{
+        //     let query = `SELECT COUNT(*) AS cantidad
+        //         FROM grupo_socio
+        //         WHERE Grupo_id = ?`
+        //     const result = await db.query(query, [grupo.Grupo_id]);
+        //     // console.log(result[0][0].cantidad)
+        //     return result[0][0].cantidad
+        // })
+        // const groupCounts = await Promise.all(promises) 
+        // groupCounts.forEach((count,index) => {
+
+        //     data[index] = {...data[index],miembros:count}
+        // })
+        
 
         return res.status(200).json({ code: 200, message: "Información de los grupos", data });
 
