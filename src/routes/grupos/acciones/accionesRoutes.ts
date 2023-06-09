@@ -7,6 +7,6 @@ const router = Router({ mergeParams: true });
 
 router.get("/costo", enviar_costo_acciones)
 //Obtener acciones de un socio por sesion
-router.get("/acciones", authSocioGrupo, acciones_sesion_socio)
+router.get("/acciones/:Sesion_id", authSocioGrupo, acciones_sesion_socio)
 
 export { router as accionesRoutes };

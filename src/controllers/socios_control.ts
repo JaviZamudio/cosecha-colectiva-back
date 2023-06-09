@@ -358,7 +358,6 @@ export const enviar_socio = async (req: SocioRequest<any>, res) => {
 
     try {
         const socio = await existeSocio(id_socio_actual!);
-
         return res.status(200).json({
             code: 200, message: "Información del socio", data: {
                 Nombres: socio.Nombres,
