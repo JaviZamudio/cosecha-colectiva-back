@@ -268,8 +268,15 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         let query8 = "SELECT asistencias.Presente, sesiones.Tipo_sesion FROM asistencias JOIN sesiones ON sesiones.Sesion_id = asistencias.Sesion_id WHERE asistencias.Socio_id = ? AND sesiones.Grupo_id = ?";
         const [sesion] = await db.query(query8, [Socio_id, Grupo_id]);
 
-        let query9 = "SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 ORDER BY Fecha_final DESC LIMIT 1"
-        const [proxAdeudo] = await db.query(query9, [Socio_id]);
+        let acuerdoVigenteQuery = "SELECT Acuerdo_id FROM acuerdos WHERE Grupo_id=? AND STATUS = 1"
+        const [acuerdoVigente] = await db.query(acuerdoVigenteQuery, [Grupo_id]);
+
+        // que tal que no hay acuerdo vigente, se rompe lo demas? o devuelve nulls
+        // console.log(acuerdoVigente[0].Acuerdo_id)
+
+        let prestamoProximoVencerQuery = 'SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 AND Acuerdos_id=? ORDER BY Fecha_final ASC LIMIT 1'
+        const [proxAdeudo] = await db.query(prestamoProximoVencerQuery, [Socio_id,acuerdoVigente[0].Acuerdo_id]);
+
         return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', 
         nombreDelGrupo: nombre, 
         sesiones: sesiones, 
@@ -280,7 +287,7 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         status: usuario[0].Status, 
         paseLista: sesion[0].Presente,
         Tipo_sesion: sesion[0].Tipo_sesion,
-        proxAdeudo });
+        proxAdeudo});
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);

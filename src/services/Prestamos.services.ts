@@ -160,6 +160,7 @@ export const pagarPrestamo = async (Prestamo_id: number, Monto_abono: number, co
  export const generar_prestamo = async (Grupo_id: number, campos_prestamo: Prestamo, con?: PoolConnection | Pool) => {
     if (con === undefined) con = db;
     let query = "INSERT INTO prestamos SET ?";
+    console.log('-----',campos_prestamo)
     await con.query(query, campos_prestamo);
     
     // Registrar transaccion
