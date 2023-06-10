@@ -71,12 +71,11 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
             //
         }
 
-        let query3 = "SELECT Fecha_prox_reunion, Lugar_prox_reunion FROM sesiones WHERE Grupo_id = ? LIMIT 1";
+        let query3 = "SELECT Fecha_prox_reunion FROM sesiones WHERE Grupo_id = ? ORDER BY created_at DESC LIMIT 1";
         const [info_ses] = await db.query(query3, [Grupo_id]);
         
-        
         // return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, 'fecha' : info_ses[0].Fecha_prox_reunion, 'lugar' : info_ses[0].Lugar_prox_reunion } });
-        return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, info_ses } });
+        return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, fecha : info_ses[0].Fecha_prox_reunion, } });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
