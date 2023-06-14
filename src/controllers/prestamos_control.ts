@@ -544,3 +544,29 @@ export const get_info_his_pres = async (req: AdminRequest<any>, res) => {
         return res.json({ code, message }).status(code);
     }
 }
+
+export const get_historial_pres_socio_ses = async (req: AdminRequest<any>, res) => {
+    const Socio_id = req.id_socio_actual!;
+    const Sesion_id = Number(req.params.Sesion_id);
+
+    console.log('hey');
+    console.log("este es sesion "+Sesion_id);
+
+    try {
+        //prestamos solicitados
+        let query = "SELECT Fecha_inicial as Fecha, Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Sesion_id = ? AND Estatus_ampliacion = 0";
+        const [solicitados] = await db.query(query, [Socio_id, Sesion_id]);
+        //Prestamos ampliados
+        let query2 = "SELECT Fecha_inicial as Fecha, Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Sesion_id = ? AND Estatus_ampliacion = 1";
+        const [ampliados] = await db.query(query2, [Socio_id, Sesion_id]);
+        //Prestamos pagos
+        let query3 = "SELECT Timestamp as Fecha, Cantidad_movimiento FROM transacciones WHERE Socio_id = ? AND Sesion_id = ? AND Catalogo_id = 'ABONO_PRESTAMO'";
+        const [prestamos] = await db.query(query3, [Socio_id, Sesion_id]);
+
+        return res.status(200).json({ code: 200, data: {'prestamos_solicitados':solicitados, 'prestamos_ampliados': ampliados, 'pagos_prestamo': prestamos} });
+    } catch (error) {
+        console.log(error);
+        const { message, code } = getCommonError(error)
+        return res.json({ code, message }).status(code);
+    }
+}
