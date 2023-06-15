@@ -535,7 +535,7 @@ export const get_info_his_pres = async (req: AdminRequest<any>, res) => {
     const Socio_id = req.id_socio_actual!;
 
     try {
-        let query = "SELECT Prestamo_id, sesiones.Fecha AS date, Monto_prestamo AS total, Monto_prestamo - Monto_pagado AS restante, Estatus_prestamo AS estatus FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
+        let query = "SELECT Prestamo_id, Sesiones_restantes, Monto_prestamo AS total, Monto_prestamo - Monto_pagado AS restante, Estatus_prestamo AS estatus FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
         return res.status(200).json({ code: 200, data: prestamos });
     } catch (error) {
