@@ -424,13 +424,17 @@ export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
         WHERE 
             transacciones.Sesion_id = ?
         `;
-        const { Pago_multas, Pago_prestamos, Compra_acciones, Prestamos_dados, Acciones_vendidas } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id]))[0][0];
+        let { Pago_multas, Pago_prestamos, Compra_acciones, Prestamos_dados, Acciones_vendidas } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id]))[0][0];
 
         // Total_entradas: suma de las entradas de dinero en la sesion actual (Pago_multas + Pago_prestamos + Compra_acciones)
         const Total_entradas = Pago_multas + Pago_prestamos + Compra_acciones;
 
         // Total_salidas: suma de las salidas de dinero en la sesion actual (Prestamos_dados + Acciones_vendidas)
         const Total_salidas = Prestamos_dados + Acciones_vendidas;
+
+        if(Acciones_vendidas==null){
+            Acciones_vendidas = 0;
+        }
 
         return res.json({ code: 200, message: 'Resumen de sesion obtenido', data: { Caja_inicial, Caja_final, Pago_multas, Pago_prestamos, Compra_acciones, Total_entradas, Prestamos_dados, Acciones_vendidas, Total_salidas } }).status(200);
 
