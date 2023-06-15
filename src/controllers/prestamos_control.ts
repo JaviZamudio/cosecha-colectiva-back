@@ -251,6 +251,12 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         `
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
 
+        for (var i = 0; i < Object.keys(prestamos).length; i++) {
+            if (prestamos[i].Sesiones_restantes < 0){
+                prestamos[i].Sesiones_restantes= 0;
+            }
+        }
+
         let query2 = "SELECT Nombres, Apellidos FROM socios WHERE Socio_id = ?";
         const [socio_dat] = await db.query(query2, [Socio_id]);
 
