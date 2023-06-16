@@ -8,6 +8,7 @@ import { existeSocio, obtenerLimiteCreditoDisponible, socioEnGrupo } from "../se
 import { crear_transaccion } from "../services/Transacciones.services";
 import { AdminRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
+import { OkPacket, RowDataPacket } from "mysql2";
 
 export const registrar_compra_acciones = async (req: AdminRequest<{ Cantidad: number }>, res: Response) => {
     const Grupo_id = Number(req.params.Grupo_id);
@@ -155,6 +156,29 @@ export const enviar_costo_acciones = async (req: AdminRequest<any>, res: Respons
         //Total de acciones retiradas en esa sesion
         let query5 = "SELECT Cantidad_movimiento FROM transacciones WHERE Sesion_id = ? AND Socio_id = ? AND Catalogo_id = 'RETIRO_ACCION'";
         const [accionesR] = await db.query(query5, [Sesion_id, id_socio_actual]);
+        
+        let query6 = `
+        SELECT COUNT(*) as prestamosPagados
+        FROM transacciones
+        where transacciones.Sesion_id = ?
+        AND transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'ABONO_PRESTAMO'
+        `;
+        const { prestamosPagados } = (await db.query<RowDataPacket[]>(query6, [Sesion_id, id_socio_actual]))[0][0];
+
+        // Calcular el total de multas pagadas en la sesion por medio de las transacciones
+        // catalogo_id = 'PAGO_MULTA'
+        let query7 = `
+        SELECT COUNT(*) as multasPagadas
+        FROM transacciones
+        where transacciones.Sesion_id = ?
+        AND transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'PAGO_MULTA'
+        `;
+        const { multasPagadas } = (await db.query<RowDataPacket[]>(query7, [Sesion_id, id_socio_actual]))[0][0];
+
+        console.log('prestamos pagados-----',prestamosPagados)
+        console.log('multas pagadas-----',multasPagadas)
         
         return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesion: sesion, numAccionesT: accionesT, numAccionesC: accionesC, numAccionesR: accionesR,Costo: acuerdoActual.Costo_acciones });
     } catch (error) {

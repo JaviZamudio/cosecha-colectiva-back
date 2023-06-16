@@ -580,24 +580,35 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         // Calcular el total de prestamos pagados en la sesion por medio de las transacciones
         // select cuenta de prestamos en los que la sesion sea la sesion actual, el socio sea el socio actual y el Catalogo_id = "ABONO_PRESTAMO"
         let query = `
-        SELECT COUNT(*) as prestamosPagados
+        SELECT SUM(transacciones.Cantidad_movimiento) as prestamosPagados
         FROM transacciones
         where transacciones.Sesion_id = ?
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'ABONO_PRESTAMO'
         `;
-        const { prestamosPagados } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
+        const {prestamosPagados} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
 
         // Calcular el total de multas pagadas en la sesion por medio de las transacciones
         // catalogo_id = 'PAGO_MULTA'
         query = `
-        SELECT COUNT(*) as multasPagadas
+        SELECT SUM(transacciones.Cantidad_movimiento) as multasPagadas
         FROM transacciones
         where transacciones.Sesion_id = ?
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'PAGO_MULTA'
         `;
-        const { multasPagadas } = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
+        const  {multasPagadas} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
+
+        
+        query = `
+        SELECT SUM(transacciones.Cantidad_movimiento) as prestamosPedidos
+        FROM transacciones
+        where transacciones.Sesion_id = ?
+        AND transacciones.Socio_id = ?
+        AND transacciones.Catalogo_id = 'ENTREGA_PRESTAMO'
+        `;
+        const  {prestamosPedidos} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
+
 
         // Calcular el total de acciones compradas en la sesion por medio de las transacciones
         // catalogo_id = 'COMPRA_ACCION', obtener la suma de transaccion.Cantidad_movimiento
@@ -608,8 +619,8 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Catalogo_id = 'COMPRA_ACCION'
         AND transacciones.Sesion_id = ?
         `;
-        const { accionesCompradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
-
+        const  {accionesCompradas} = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0] || 0;
+        
         // Calcular el total de acciones retiradas en la sesion por medio de las transacciones
         // catalogo_id = 'RETIRO_ACCION', obtener la suma de transaccion.Cantidad_movimiento
         query = `
@@ -619,9 +630,23 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Catalogo_id = 'RETIRO_ACCION'
         AND transacciones.Sesion_id = ?
         `;
-        const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
+        const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0] || 0;
 
-        return res.status(200).json({ code: 200, message: 'Resumen obtenido', data: { prestamosPagados, multasPagadas, accionesCompradas: Number(accionesCompradas), accionesRetiradas: Number(accionesRetiradas) } });
+        console.log(accionesCompradas)
+        console.log(multasPagadas)
+        console.log(prestamosPagados)
+
+        console.log(accionesRetiradas)
+        console.log(prestamosPedidos)
+
+        return res.status(200).json({ code: 200, message: 'Resumen obtenido', data: { 
+            accionesCompradas, 
+            multasPagadas, 
+            prestamosPagados,
+
+            accionesRetiradas: Math.abs(accionesRetiradas), 
+            prestamosPedidos: Math.abs(prestamosPedidos) 
+        } });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
