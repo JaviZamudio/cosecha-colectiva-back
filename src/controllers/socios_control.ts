@@ -586,7 +586,7 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'ABONO_PRESTAMO'
         `;
-        const {prestamosPagados} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
+        let {prestamosPagados} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
 
         // Calcular el total de multas pagadas en la sesion por medio de las transacciones
         // catalogo_id = 'PAGO_MULTA'
@@ -597,7 +597,7 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'PAGO_MULTA'
         `;
-        const  {multasPagadas} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
+        let  {multasPagadas} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
 
         
         query = `
@@ -607,7 +607,7 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'ENTREGA_PRESTAMO'
         `;
-        const  {prestamosPedidos} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0] || 0;
+        let  {prestamosPedidos} = (await db.query<RowDataPacket[]>(query, [sesionActual.Sesion_id, Socio_id]))[0][0];
 
 
         // Calcular el total de acciones compradas en la sesion por medio de las transacciones
@@ -619,7 +619,7 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Catalogo_id = 'COMPRA_ACCION'
         AND transacciones.Sesion_id = ?
         `;
-        const  {accionesCompradas} = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0] || 0;
+        let  {accionesCompradas} = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
         
         // Calcular el total de acciones retiradas en la sesion por medio de las transacciones
         // catalogo_id = 'RETIRO_ACCION', obtener la suma de transaccion.Cantidad_movimiento
@@ -630,14 +630,17 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
         AND transacciones.Catalogo_id = 'RETIRO_ACCION'
         AND transacciones.Sesion_id = ?
         `;
-        const { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0] || 0;
+        let { accionesRetiradas } = (await db.query<RowDataPacket[]>(query, [Socio_id, sesionActual.Sesion_id]))[0][0];
 
-        console.log(accionesCompradas)
-        console.log(multasPagadas)
-        console.log(prestamosPagados)
+        
 
-        console.log(accionesRetiradas)
-        console.log(prestamosPedidos)
+        
+        if (accionesCompradas==null ) accionesCompradas = 0
+        if (multasPagadas==null ) multasPagadas = 0
+        if (prestamosPagados==null ) prestamosPagados = 0
+
+        if (accionesRetiradas==null ) accionesRetiradas = 0
+        if (prestamosPedidos==null ) prestamosPedidos = 0
 
         return res.status(200).json({ code: 200, message: 'Resumen obtenido', data: { 
             accionesCompradas, 
@@ -645,8 +648,9 @@ export const miniResumen = async (req: AdminRequest<any>, res) => {
             prestamosPagados,
 
             accionesRetiradas: Math.abs(accionesRetiradas), 
-            prestamosPedidos: Math.abs(prestamosPedidos) 
+            prestamosPedidos: Math.abs(prestamosPedidos),
         } });
+
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
