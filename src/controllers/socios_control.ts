@@ -365,7 +365,7 @@ export const enviar_grupos_socio = async (req: SocioRequest<any>, res) => {
             let query = `SELECT Fecha_prox_reunion 
                 FROM sesiones 
                 WHERE Grupo_id = ? 
-                ORDER BY Fecha_prox_reunion DESC 
+                ORDER BY created_at DESC 
                 LIMIT 2;`
             const result = await db.query(query, [grupo.Grupo_id]) as RowDataPacket[]
             // console.log(result[0])

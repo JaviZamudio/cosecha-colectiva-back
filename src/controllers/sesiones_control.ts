@@ -217,9 +217,55 @@ export const agendar_sesion = async (req, res) => {
 
 export const get_lista_socios = async (req, res) => {
     const Grupo_id = req.params.Grupo_id
+    const {type} = req.query
     try {
-        let query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Status = 1";
-        let data = await db.query(query, Grupo_id);
+        let sesion 
+        if(type!='asistencia'){
+            sesion = await obtener_sesion_activa(Grupo_id);
+        }
+        console.log(sesion)
+        let query 
+        let data
+        switch(type){
+            case 'asistencia':
+                query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Status = 1";
+                data = await db.query(query, Grupo_id);
+                break
+            case 'firma':
+                query = `SELECT socios.Socio_id,socios.Nombres,socios.Apellidos,asistencias.Presente 
+                FROM asistencias
+                INNER JOIN socios ON socios.Socio_id = asistencias.Socio_id
+                WHERE asistencias.Presente != 0 AND asistencias.Sesion_id = ?`
+                data = await db.query(query, sesion.Sesion_id);
+                break
+            case 'prestamos':
+                let acuerdoVigenteQuery = "SELECT Acuerdo_id FROM acuerdos WHERE Grupo_id=? AND STATUS = 1"
+                const [acuerdoVigente] = await db.query(acuerdoVigenteQuery, [Grupo_id]);
+
+                console.log(acuerdoVigente[0])
+
+                query = `SELECT DISTINCT prestamos.Socio_id,socios.Nombres,socios.Apellidos
+                from grupo_socio 
+                JOIN prestamos ON grupo_socio.Socio_id = prestamos.Socio_id
+                JOIN socios ON grupo_socio.Socio_id = socios.Socio_id
+                WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Status = 1 AND prestamos.Estatus_prestamo = 0`
+                data = await db.query(query, Grupo_id);
+                break
+            case 'multas':
+                query = `SELECT DISTINCT multas.Socio_id,socios.Nombres,socios.Apellidos
+                from grupo_socio 
+                JOIN multas ON grupo_socio.Socio_id = multas.Socio_id
+                JOIN socios ON grupo_socio.Socio_id = socios.Socio_id
+                WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Status = 1 AND multas.Status = 0`
+                data = await db.query(query, Grupo_id);
+                break
+            default:
+                query = "SELECT socios.Socio_id, socios.Nombres, socios.Apellidos FROM grupo_socio INNER JOIN socios ON grupo_socio.Socio_id = socios.Socio_id WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Status = 1";
+                data = await db.query(query, Grupo_id);
+            break
+        }
+        // console.log(data[0])
+
         return res.json({ code: 200, data: data[0], }).status(200);
         //preguntar si el status al final funciona o tiene que ser al principio
     } catch (error) {
@@ -250,11 +296,21 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
     try {
         let query = "SELECT Nombre_grupo FROM grupos WHERE Grupo_id = ?";
         const [nombre] = await db.query(query, Grupo_id);
-        let query2 = "SELECT Sesion_id, Fecha FROM sesiones WHERE Grupo_id = ?";
-        const [sesiones] = await db.query(query2, Grupo_id);
+
+
+        let query2 = `
+        SELECT A.Sesion_id, A.Fecha, A.Tipo_sesion, B.Presente
+        FROM sesiones A
+        INNER JOIN asistencias B ON A.Sesion_id = B.Sesion_id AND B.Socio_id = ?
+        WHERE A.Grupo_id = ? ORDER BY A.Fecha DESC`;
+        const [sesiones] = await db.query(query2,[Socio_id, Grupo_id]);
+        
+        console.log(Grupo_id,Socio_id)
+
+
+
         let query3 = "SELECT acciones FROM grupo_socio WHERE Grupo_id = ? AND Socio_id = ?";
         const [acciones] = await db.query(query3, [Grupo_id, Socio_id]);
-        
         let query4 = "SELECT SUM(Monto_prestamo) as suma FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Estatus_prestamo = 0";
         const [prestamos] = await db.query(query4, [Socio_id, Grupo_id]);
         let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
@@ -273,9 +329,12 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
 
         // que tal que no hay acuerdo vigente, se rompe lo demas? o devuelve nulls
         // console.log(acuerdoVigente[0].Acuerdo_id)
-
-        let prestamoProximoVencerQuery = 'SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 AND Acuerdos_id=? ORDER BY Fecha_final ASC LIMIT 1'
-        const [proxAdeudo] = await db.query(prestamoProximoVencerQuery, [Socio_id,acuerdoVigente[0].Acuerdo_id]);
+        let proxAdeudo 
+        if(typeof(acuerdoVigente[0])!='undefined'){
+            let prestamoProximoVencerQuery = 'SELECT Fecha_final,Monto_prestamo FROM prestamos WHERE Socio_id = ? AND Estatus_prestamo=0 AND Acuerdos_id=? ORDER BY Fecha_final ASC LIMIT 1'
+            let [proxAd] = await db.query(prestamoProximoVencerQuery, [Socio_id,acuerdoVigente[0].Acuerdo_id]);
+            proxAdeudo = proxAd
+        } 
 
         return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', 
         nombreDelGrupo: nombre, 
@@ -284,9 +343,9 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         dineroTotalDeuda: multas[0].suma + prestamos[0].suma , 
         gananciasAcumuladas: ganancias[0], 
         rol: usuario[0].Tipo_socio, 
-        status: usuario[0].Status, 
-        paseLista: sesion[0].Presente,
-        Tipo_sesion: sesion[0].Tipo_sesion,
+        // status: usuario[0].Status, 
+        // paseLista: sesion[0].Presente,
+        // Tipo_sesion: sesion[0].Tipo_sesion,
         proxAdeudo});
     } catch (error) {
         console.log(error);

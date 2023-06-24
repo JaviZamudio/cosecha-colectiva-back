@@ -6,6 +6,7 @@ import { SocioRequest } from '../types/misc';
 import { getCommonError } from '../utils/utils';
 import { campos_incompletos, Fecha_actual, generarCodigoValido } from '../utils/validaciones';
 
+import { OkPacket, RowDataPacket } from "mysql2";
 // Funcion para creacion de grupos
 export const crear_grupo = async (req: SocioRequest<Grupo>, res) => {
     const id_socio_actual = req.id_socio_actual;
@@ -72,10 +73,22 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
         }
 
         let query3 = "SELECT Fecha_prox_reunion FROM sesiones WHERE Grupo_id = ? ORDER BY created_at DESC LIMIT 1";
-        const [info_ses] = await db.query(query3, [Grupo_id]);
-        
+        const [info_ses] = await db.query(query3, [Grupo_id]) as RowDataPacket[]
+        console.log(info_ses)
+        let fechaProxSesion = ''
+        if(info_ses.length > 0) {
+            fechaProxSesion = info_ses[0].Fecha_prox_reunion
+        }
         // return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, 'fecha' : info_ses[0].Fecha_prox_reunion, 'lugar' : info_ses[0].Lugar_prox_reunion } });
-        return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, fecha : info_ses[0].Fecha_prox_reunion, } });
+        return res.status(200).json({ code: 200,
+             message: 'Info seleccionada', 
+             data: { 
+                Nombre_grupo: grupo[0].Nombre_grupo, 
+                Status: status, Rol: rol[0].Tipo_Socio, 
+                Codigo_grupo: Codigo_grupo, Sesiones_restantes, 
+                fecha : fechaProxSesion, 
+            } 
+            });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);
