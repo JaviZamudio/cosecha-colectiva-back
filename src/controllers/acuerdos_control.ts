@@ -134,3 +134,25 @@ export const crear_acuerdo_secundario = async (req: AdminRequest<AcuerdoSecundar
         return res.status(code).json({ code, message });
     }
 }
+
+export const obtener_acuerdos = async (req,res,next) => {
+    const Grupo_id = req.params.Grupo_id
+    try {
+        const acuerdos_query = 
+        `SELECT  acuerdos.*, socios.Nombres AS nonbre_admin , socios.Apellidos AS apellido_admin, socios2.Nombres AS nombre_suplente, socios2.Apellidos AS apellido_suplente
+        FROM acuerdos
+        JOIN socios ON acuerdos.Id_socio_administrador =  socios.Socio_id
+        JOIN socios  AS socios2 ON acuerdos.Id_socio_administrador_suplente =  socios2.Socio_id
+        WHERE Grupo_id = ?  AND acuerdos.Status = 1`
+        const [acuerdos] = await db.query(acuerdos_query, [Grupo_id]);
+
+        const acuerdos_secundarios_query = 'SELECT * FROM acuerdos_secundarios WHERE Grupo_id = ? AND acuerdos_secundarios.Status = 1 '
+        const [acuerdos_secundarios] = await db.query(acuerdos_secundarios_query, [Grupo_id]);
+
+        return res.status(200).json({acuerdos_secundarios,acuerdos });
+ 
+    } catch(error){
+        const { code, message } = getCommonError(error);
+        return res.status(code).json({ code, message });
+    }
+}
