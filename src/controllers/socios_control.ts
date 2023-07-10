@@ -244,7 +244,7 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
     // si el socio no esta en el grupo, se agrega
     // si el socio ya esta en el grupo, error.
     // Si el grupo es nuevo (no tiene acuerdos) solo se agrega al socio
-    // Si el grupo ya tiene acuerdos, se agrega al socio y se asignan las acciones **error
+    // Si el grupo ya tiene acuerdos, se agrega al socio y se asignan las acciones
 
     const { id_socio_actual } = req;
     const { Codigo_grupo } = req.body;
@@ -260,11 +260,10 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
         // validar que el grupo exista
         const grupo = await existeGrupo(Codigo_grupo);
 
+        // Verificar que el socio no este en el grupo ya
         let query = "SELECT * FROM grupo_socio WHERE Socio_id = ? AND Grupo_id = ?";
         const [grupo_socio] = await con.query(query, [id_socio_actual, grupo.Grupo_id]) as [GrupoSocio[], any];
 
-
-        // si el socio ya esta en el grupo
         if (grupo_socio.length != 0) {
             return res.status(400).json({ code: 400, message: "El socio ya está en el grupo" });
         }
@@ -279,16 +278,7 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
 
         query = "INSERT INTO grupo_socio SET ?";
         const [resultado_socio] = await con.query(query, campos_grupo_socio) as [OkPacket, any];
-        console.log(resultado_socio)
-        let query2 = "SELECT * FROM acuerdos WHERE Grupo_id = ? and Status = 1";
-        const acuerdo = (await con.query(query2, [grupo.Grupo_id]))[0][0] as Acuerdo;
-        // AQUI ES DONDE COMPRA LAS ACCIONES
-        // si hay acuerdo actual, se le asignan las acciones
-        // para este caso permitir null en la sesion porq no necesita de una sesion para comprar acciones si se esta uniendo
-        //o como deberia funcionar en persona??
-        if (acuerdo !== undefined) {
-            comprar_acciones(id_socio_actual!, grupo.Grupo_id, acuerdo.Minimo_aportacion, con,true);
-        }
+
         con.commit();
         
         return res.status(200).json({ code: 200, message: "El socio se ha unido correctamente", Grupo_id: grupo.Grupo_id });
