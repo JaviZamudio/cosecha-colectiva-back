@@ -253,7 +253,7 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
 
         for (var i = 0; i < Object.keys(prestamos).length; i++) {
             if (prestamos[i].Sesiones_restantes < 0){
-                prestamos[i].Sesiones_restantes= 0;
+                prestamos[i].Sesiones_restantes= -1;
             }
         }
 
