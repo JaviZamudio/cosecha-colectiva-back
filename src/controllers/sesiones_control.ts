@@ -523,3 +523,20 @@ export const observacion_sesion_socio = async (req: AdminRequest<{ Observacion: 
         return res.json({ code, message }).status(code);
     }
 }
+
+
+export const obtener_observacion_sesion_socio = async (req: AdminRequest<{ Observacion: string }>, res) => {
+    const { Socio_id } = req.params;
+    const { id_grupo_actual } = req;
+    try {
+        const sesionActual = await obtenerSesionActual(id_grupo_actual!);
+
+        let observaciones_query = "SELECT Observaciones FROM asistencias WHERE Socio_id = ? AND Sesion_id = ?";
+        const [observaciones] = await db.query(observaciones_query, [Socio_id, sesionActual.Sesion_id]);
+
+        return res.json({ observaciones:observaciones[0].Observaciones }).status(200);
+    } catch (error) {
+        const { code, message } = getCommonError(error);
+        return res.json({ code, message }).status(code);
+    }
+}

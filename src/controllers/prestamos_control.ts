@@ -244,7 +244,7 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         //Total de prestamos no pagados de un socio
         // let query = "SELECT prestamos.Prestamo_id, prestamos.Fecha_inicial AS Fecha, (prestamos.Interes_generado - prestamos.Interes_pagado) AS Interes, prestamos.Monto_prestamo AS Total, prestamos.Monto_pagado AS Pagado FROM prestamos JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?;";
         let query = `
-            SELECT prestamos.Prestamo_id, prestamos.Monto_prestamo - prestamos.Monto_pagado AS Adeudo_prestamo, prestamos.Interes_generado - prestamos.Interes_pagado AS Adeudo_interes, prestamos.Sesiones_restantes, prestamos.Fecha_inicial
+            SELECT prestamos.Fecha_final, prestamos.Prestamo_id, prestamos.Monto_prestamo - prestamos.Monto_pagado AS Adeudo_prestamo, prestamos.Interes_generado - prestamos.Interes_pagado AS Adeudo_interes, prestamos.Sesiones_restantes, prestamos.Fecha_inicial
             FROM prestamos
             JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id
             WHERE Socio_id = ? AND Estatus_prestamo = 0 AND sesiones.Grupo_id = ?

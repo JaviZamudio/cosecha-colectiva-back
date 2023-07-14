@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { crear_sesion, enviar_inasistencias_sesion, finalizar_sesion, registrar_retardos, agendar_sesion, get_lista_socios, get_conteo_dinero, get_sesiones_grupo, recoger_firma, get_firma, resumen_sesion, observacion_sesion_socio } from "../../../controllers/sesiones_control";
+import { crear_sesion, enviar_inasistencias_sesion, finalizar_sesion, registrar_retardos, agendar_sesion, get_lista_socios, get_conteo_dinero, get_sesiones_grupo, recoger_firma, get_firma, resumen_sesion, observacion_sesion_socio,obtener_observacion_sesion_socio } from "../../../controllers/sesiones_control";
 import { authAdmin, authSocioGrupo } from "../../../middleware/auth";
 import { get_info_his_mul } from "../../../controllers/multas_control";
 import { get_info_his_pres } from "../../../controllers/prestamos_control";
@@ -31,6 +31,7 @@ router.post("/agendar", authAdmin, agendar_sesion);
 router.post("/socios/:Socio_id/firma", authAdmin, recoger_firma);
 // Recoger observacion de usuario en la sesion
 router.post("/socios/:Socio_id/observacion", authAdmin, observacion_sesion_socio);
+router.get("/socios/:Socio_id/observacion", authAdmin, obtener_observacion_sesion_socio);
 // Obtener una firma de usuario en una sesion
 router.get("/:Sesion_id/socios/:Socio_id/firma", authAdmin, get_firma);
 // Resumen de la sesion para el grupo
