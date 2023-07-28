@@ -60,7 +60,7 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
             status = 'Pendiente'
         }
         let Codigo_grupo = 0;
-        if(rol[0].Tipo_Socio=='ADMIN'){
+        if(rol[0].Tipo_Socio=='ADMIN' || rol[0].Tipo_Socio=='SUPLENTE'){
             Codigo_grupo = grupo[0].Codigo_grupo
         }
 
