@@ -82,7 +82,7 @@ export const crear_prestamo = async (req: AdminRequest<PayloadCrearPrestamos>, r
         }
         //Verificar que la cantidad solicitada sea menor a su limite
         if (Monto_prestamo > Lista_socios_validacion[0].Limite_credito_disponible!) {
-            return res.status(400).json({ code: 400, message: "La cantidad solicitada rebsasa su limite de credito" });
+            return res.status(400).json({ code: 400, message: "La cantidad solicitada rebasa su límite de crédito" });
         }
         //Verificar si hay esa cantidad disponible en la caja
         //Obtener la caja de la sesion activa
