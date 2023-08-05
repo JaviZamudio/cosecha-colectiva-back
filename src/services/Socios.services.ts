@@ -22,7 +22,7 @@ export const socio_es_admin = async (Socio_id: number, Grupo_id: number) => {
     await existeGrupo(Grupo_id);
 
     // Consultar si el socio es administrador del grupo
-    const query = "SELECT * FROM grupo_socio WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Socio_id = ? AND grupo_socio.Tipo_socio = 'ADMIN'";
+    const query = "SELECT * FROM grupo_socio WHERE grupo_socio.Grupo_id = ? AND grupo_socio.Socio_id = ? AND grupo_socio.Tipo_socio = 'ADMIN' OR grupo_socio.Tipo_socio ='SUPLENTE'";
     const [rows] = (await db.query(query, [Grupo_id, Socio_id]) as [GrupoSocio[], any]);
 
     // Si el socio no es administrador del grupo, lanzar error

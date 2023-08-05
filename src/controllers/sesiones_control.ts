@@ -463,7 +463,8 @@ export const resumen_sesion = async (req: AdminRequest<{}>, res) => {
         let Caja_inicial = 0;
         try{
             let query = "SELECT Caja from sesiones WHERE Grupo_id = ? AND Activa = 0 ORDER BY Fecha desc, Sesion_id desc LIMIT 1";
-            const { Caja: Caja_inicial } = (await db.query<RowDataPacket[]>(query, [id_grupo_actual]))[0][0];
+            const { Caja: query_res } = (await db.query<RowDataPacket[]>(query, [id_grupo_actual]))[0][0];
+            Caja_inicial = query_res
         }catch{
             //se queda la caja en 0
         }
