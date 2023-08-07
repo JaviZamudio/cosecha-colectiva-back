@@ -33,9 +33,9 @@ export const registrar_compra_acciones = async (req: AdminRequest<{ Cantidad: nu
         const sesionActual = await obtenerSesionActual(Grupo_id);
 
         // comprobar que el socio no vaya a tener mas del 50% de las acciones del grupo
-        if (grupoSocio.Acciones! + Cantidad > (sesionActual.Acciones + Cantidad) / 2) {
-            return res.status(400).json({ error: "El socio no puede tener mas del 50% de las acciones del grupo" });
-        }
+        // if (grupoSocio.Acciones! + Cantidad > (sesionActual.Acciones + Cantidad) / 2) {
+        //     return res.status(400).json({ error: "El socio no puede tener mas del 50% de las acciones del grupo" });
+        // }
 
         // Verificar que la cantidad sea divisible por el costo de una accion
         const costo_accion = await obtener_costo_accion(Grupo_id);

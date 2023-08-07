@@ -80,14 +80,14 @@ export const crear_acuerdos = async (req: AdminRequest<Acuerdo>, res) => { //
             await con.query(query, [campos_acuerdo.Grupo_id, campos_acuerdo.Id_socio_administrador_suplente]);
 
             // si es grupo nuevo, asignar las acciones
-            if (esGrupoNuevo) {
-                const socios_grupo = await obtenerSociosGrupo(id_grupo_actual!);
+            // if (esGrupoNuevo) {
+            //     const socios_grupo = await obtenerSociosGrupo(id_grupo_actual!);
 
-                for (const grupoSocio of socios_grupo) {
-                    console.log("Asignando acciones a socio: " + grupoSocio.Socio_id);
-                    await comprar_acciones(grupoSocio.Socio_id, grupoSocio.Grupo_id, campos_acuerdo.Minimo_aportacion, con);
-                }
-            }
+            //     for (const grupoSocio of socios_grupo) {
+            //         console.log("Asignando acciones a socio: " + grupoSocio.Socio_id);
+            //         await comprar_acciones(grupoSocio.Socio_id, grupoSocio.Grupo_id, campos_acuerdo.Minimo_aportacion, con);
+            //     }
+            // }
 
             // Hacer commit en la bd
             await con.commit();
