@@ -79,6 +79,7 @@ export const get_info_grupo = async (req: SocioRequest<Grupo>, res) => {
         if(info_ses.length > 0) {
             fechaProxSesion = info_ses[0].Fecha_prox_reunion
         }
+        console.log(fechaProxSesion)
         // return res.status(200).json({ code: 200, message: 'Info seleccionada', data: { Nombre_grupo: grupo[0].Nombre_grupo, Status: status, Rol: rol[0].Tipo_Socio, Codigo_grupo: Codigo_grupo, Sesiones_restantes, 'fecha' : info_ses[0].Fecha_prox_reunion, 'lugar' : info_ses[0].Lugar_prox_reunion } });
         return res.status(200).json({ code: 200,
              message: 'Info seleccionada', 

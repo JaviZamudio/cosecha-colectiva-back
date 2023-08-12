@@ -169,7 +169,7 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
     // TODO: Subir las imagenes de las firmas de los socios a AWS S3
 
     const { id_grupo_actual } = req;
-    const { Lugar, Fecha } = req.body;
+    // const { Lugar, Fecha } = req.body;
 
     const con = await db.getConnection();
     try {
@@ -177,8 +177,8 @@ export const finalizar_sesion = async (req: AdminRequest<any>, res) => {
 
         const sesionActual = await obtenerSesionActual(id_grupo_actual!);
 
-        let query = "UPDATE sesiones SET Lugar_prox_reunion = ?, Fecha_prox_reunion = ?, Activa = 0 WHERE Sesion_id = ?";
-        await con.query(query, [Lugar, Fecha, sesionActual.Sesion_id]);
+        // let query = "UPDATE sesiones SET Lugar_prox_reunion = ?, Fecha_prox_reunion = ?, Activa = 0 WHERE Sesion_id = ?";
+        // await con.query(query, [Lugar, Fecha, sesionActual.Sesion_id]);
 
         asignarGananciasSesion(id_grupo_actual!, { sesionActual }, con);
 
@@ -317,8 +317,13 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
         
         
-        let query6 = "SELECT Monto_ganancia as gananciasAcumuladas FROM ganancias JOIN sesiones ON ganancias.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND sesiones.Grupo_id = ?";
+        let query6 = "SELECT SUM(Monto_ganancia) as gananciasAcumuladas FROM ganancias JOIN sesiones ON ganancias.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND sesiones.Grupo_id = ?  AND ganancias.Entregada = 0";
         const [ganancias] = await db.query(query6, [Socio_id, Grupo_id]);
+        let gananciasAcumuladas = 0
+        if(ganancias[0].gananciasAcumuladas!=null){
+            gananciasAcumuladas = ganancias[0].gananciasAcumuladas
+        }
+
         let query7 = "SELECT Tipo_socio, Status FROM grupo_socio WHERE Socio_id = ? AND Grupo_id = ?";
         const [usuario] = await db.query(query7, [Socio_id, Grupo_id]);
         let query8 = "SELECT asistencias.Presente, sesiones.Tipo_sesion FROM asistencias JOIN sesiones ON sesiones.Sesion_id = asistencias.Sesion_id WHERE asistencias.Socio_id = ? AND sesiones.Grupo_id = ?";
@@ -341,7 +346,7 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         sesiones: sesiones, 
         dineroTotalAhorrado: acciones[0].acciones, 
         dineroTotalDeuda: multas[0].suma + prestamos[0].suma , 
-        gananciasAcumuladas: ganancias[0], 
+        gananciasAcumuladas, 
         rol: usuario[0].Tipo_socio, 
         // status: usuario[0].Status, 
         // paseLista: sesion[0].Presente,

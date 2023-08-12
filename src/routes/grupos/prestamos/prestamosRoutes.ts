@@ -12,8 +12,10 @@ router.get("/:Prestamo_id/:Sesion_id", authSocioGrupo, get_prestamos_socio_sesio
 // Pagar prestamos
 router.patch("/", authAdmin, pagar_prestamos);
 
+//??dos patch
 // Obtener la información de un usuario sobre sus prestamos en una sesión
-router.patch("/", authSocio, get_prestamos_socio_sesion);
+router.get("/info", authSocio, get_prestamos_socio_sesion);
+
 // Obtener Info Prestamos del grupo
 router.get("/", authAdmin, info_prestamos_general);
 router.get("/socios", authAdmin, get_prestamos_nopagados);

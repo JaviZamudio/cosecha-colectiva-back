@@ -158,29 +158,38 @@ export const enviar_costo_acciones = async (req: AdminRequest<any>, res: Respons
         const [accionesR] = await db.query(query5, [Sesion_id, id_socio_actual]);
         
         let query6 = `
-        SELECT COUNT(*) as prestamosPagados
+        SELECT SUM(Cantidad_movimiento) AS prestamosPagados
         FROM transacciones
         where transacciones.Sesion_id = ?
         AND transacciones.Socio_id = ?
         AND transacciones.Catalogo_id = 'ABONO_PRESTAMO'
         `;
-        const { prestamosPagados } = (await db.query<RowDataPacket[]>(query6, [Sesion_id, id_socio_actual]))[0][0];
+        let { prestamosPagados } = (await db.query<RowDataPacket[]>(query6, [Sesion_id, id_socio_actual]))[0][0];
 
         // Calcular el total de multas pagadas en la sesion por medio de las transacciones
         // catalogo_id = 'PAGO_MULTA'
         let query7 = `
-        SELECT COUNT(*) as multasPagadas
+        SELECT SUM(Cantidad_movimiento) AS multasPagadas
         FROM transacciones
         where transacciones.Sesion_id = ?
-        AND transacciones.Socio_id = ?
+        AND transacciones.Socio_id =?
         AND transacciones.Catalogo_id = 'PAGO_MULTA'
         `;
-        const { multasPagadas } = (await db.query<RowDataPacket[]>(query7, [Sesion_id, id_socio_actual]))[0][0];
-
-        console.log('prestamos pagados-----',prestamosPagados)
-        console.log('multas pagadas-----',multasPagadas)
+        let { multasPagadas } = (await db.query<RowDataPacket[]>(query7, [Sesion_id, id_socio_actual]))[0][0];
+        if(prestamosPagados==null) prestamosPagados = 0
+        if(multasPagadas==null) multasPagadas = 0
         
-        return res.status(200).json({ code: 200, message: 'Sesiones obtenidas', nombreDelGrupo: nombre, sesion: sesion, numAccionesT: accionesT, numAccionesC: accionesC, numAccionesR: accionesR,Costo: acuerdoActual.Costo_acciones });
+        console.log(prestamosPagados,multasPagadas)
+        return res.status(200).json({ 
+            nombreDelGrupo: nombre, 
+            sesion: sesion, 
+            numAccionesT: accionesT, 
+            numAccionesC: accionesC, 
+            numAccionesR: accionesR,
+            prestamosPagados,
+            multasPagadas,
+            Costo: acuerdoActual.Costo_acciones 
+        });
     } catch (error) {
         console.log(error);
         const { code, message } = getCommonError(error);

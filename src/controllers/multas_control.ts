@@ -162,6 +162,8 @@ export const pagar_multas = async (req: AdminRequest<{Multas: number[]}>, res) =
                 query = "update sesiones set Ganancias = Ganancias + ? where Sesion_id = ?";
                 await db.query(query, [multa.Monto_multa, sesion.Sesion_id]);
 
+                console.log('SesionId:',sesion.Sesion_id,'Grupoid:',Grupo_id,'AcuerdoId:',acuerdo.Acuerdo_id,'MultaId',multa.Multa_id,'SocioId:',multa.Socio_id)
+
             } catch (error) { // cacha las multas con error
                 multas_con_error.push({
                     Multa_id,
@@ -175,7 +177,6 @@ export const pagar_multas = async (req: AdminRequest<{Multas: number[]}>, res) =
         if (multas_con_error.length > 0) {
             return res.json({ code: 400, message: 'Multas con error', data: multas_con_error }).status(400);
         }
-
         return res.json({ code: 200, message: 'Multas pagadas' }).status(200);
 
     } catch (error) {
@@ -193,6 +194,24 @@ export const get_info_his_mul = async (req: AdminRequest<Multa>, res) => {
         let query = "SELECT Multa_id, sesiones.Fecha as date, Descripcion, Monto_multa, Status FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ?";
         const [multas] = await db.query(query, [Socio_id, Grupo_id]);
         return res.status(200).json({ code: 200, data: multas });
+    } catch (error) {
+        console.log(error);
+        const { message, code } = getCommonError(error)
+        return res.json({ code, message }).status(code);
+    }
+}
+
+export const get_multas_socio_sesion = async (req: AdminRequest<any>, res) => {
+    const Socio_id = req.id_socio_actual!;
+    const Sesion_id = Number(req.params.Sesion_id);
+
+    try {
+        let multasQuery = "SELECT Multa_id,Monto_multa,Transaccion_id,created_at FROM multas WHERE Sesion_id = ? AND Socio_id = ?";
+        const [multas] = await db.query(multasQuery, [Sesion_id, Socio_id]);
+        console.log(multas)
+        return res.status(200).json({
+            multas
+        });
     } catch (error) {
         console.log(error);
         const { message, code } = getCommonError(error)
