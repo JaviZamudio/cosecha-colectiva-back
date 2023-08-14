@@ -489,15 +489,14 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
         const acuerdo = await obtenerAcuerdoActual(Grupo_id);
 
         //Total de ganancias que puede retirar un socio
-        let query = `SELECT ganancias.Socio_id, socios.Nombres, socios.Apellidos, SUM(ganancias.Monto_ganancia) as Ganancias
-        FROM ganancias
+        let query = `SELECT socios.Socio_id,socios.Nombres,SUM(ganancias.Monto_ganancia) as Ganancias
+        FROM sesiones 
+        JOIN ganancias ON ganancias.Sesion_id = sesiones.Sesion_id
         JOIN socios ON socios.Socio_id = ganancias.Socio_id
-        JOIN sesiones ON sesiones.Sesion_id = ganancias.Sesion_id
-        JOIN grupo_socio ON grupo_socio.Socio_id = socios.Socio_id
-        WHERE sesiones.Grupo_id = ? AND ganancias.Entregada = 0 AND grupo_socio.Status = 1 AND sesiones.Fecha <= (SELECT Fecha FROM sesiones WHERE Tipo_sesion = 1 AND Grupo_id = ? ORDER BY Sesion_id DESC LIMIT 1)
+        WHERE Grupo_id = ? AND Monto_ganancia > 0 AND Entregada = 0
         group by ganancias.Socio_id`;
-        const [ganancias] = await db.query(query, [Grupo_id, Grupo_id]);
-
+        const [ganancias] = await db.query(query, [Grupo_id]);
+        console.log(Grupo_id)
         return res.status(200).json({ code: 200, message: 'Ganancias obtenidas', data: ganancias });
     } catch (error) {
         console.log(error);

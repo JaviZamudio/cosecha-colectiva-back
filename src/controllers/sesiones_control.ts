@@ -316,7 +316,6 @@ export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
         let query5 = "SELECT SUM(Monto_multa) as suma FROM multas JOIN sesiones ON multas.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND Grupo_id = ? AND Status = 0";
         const [multas] = await db.query(query5, [Socio_id, Grupo_id]);
         
-        
         let query6 = "SELECT SUM(Monto_ganancia) as gananciasAcumuladas FROM ganancias JOIN sesiones ON ganancias.Sesion_id = sesiones.Sesion_id WHERE Socio_id = ? AND sesiones.Grupo_id = ?  AND ganancias.Entregada = 0";
         const [ganancias] = await db.query(query6, [Socio_id, Grupo_id]);
         let gananciasAcumuladas = 0
