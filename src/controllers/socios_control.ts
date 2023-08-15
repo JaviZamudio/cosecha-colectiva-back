@@ -489,7 +489,7 @@ export const get_usuario_ganancias = async (req: AdminRequest<Grupo>, res) => {
         const acuerdo = await obtenerAcuerdoActual(Grupo_id);
 
         //Total de ganancias que puede retirar un socio
-        let query = `SELECT socios.Socio_id,socios.Nombres,SUM(ganancias.Monto_ganancia) as Ganancias
+        let query = `SELECT socios.Socio_id,socios.Nombres,socios.Apellidos,SUM(ganancias.Monto_ganancia) as Ganancias
         FROM sesiones 
         JOIN ganancias ON ganancias.Sesion_id = sesiones.Sesion_id
         JOIN socios ON socios.Socio_id = ganancias.Socio_id
