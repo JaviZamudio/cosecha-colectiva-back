@@ -51,7 +51,7 @@ export const existe_grupo = async (Grupo_id: number) => {
 };
 
 // Valida si el socio existe en la BD
-export const existe_socio = async (Socio_id: number | string) => {
+export const existe_socio = async (Socio_id:any) => {
     let query = "SELECT * FROM socios WHERE Socio_id = ? or Username = ?";
     const [socio] = await db.query(query, [Socio_id, Socio_id]) as [Socio[], any];
 

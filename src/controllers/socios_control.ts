@@ -250,7 +250,7 @@ export const unirse_grupo = async (req: SocioRequest<any>, res) => {
     const { Codigo_grupo } = req.body;
 
     if (campos_incompletos({ Codigo_grupo })) {
-        return res.status(400).json({ code: 400, message: "campos incompletos" });
+        return res.status(400).json({ code: 400, message: "campos incompletos" });afterAll
     }
 
     const con = await db.getConnection();

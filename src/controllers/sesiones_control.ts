@@ -1,7 +1,7 @@
 import db from "../config/database";
 import { Fecha_actual, campos_incompletos, catch_common_error, obtener_sesion_activa, existe_socio, socio_en_grupo } from "../utils/validaciones";
 import { actualizar_intereses, agregar_interes_prestamo, calcularSesionesParaAcuerdosFin, calcularSesionesEntreAcuerdos, disminuir_sesiones, obtenerSesionActual, registrar_asistencias } from "../services/Sesiones.services";
-import { AdminRequest } from "../types/misc";
+import { AdminRequest,SocioRequest } from "../types/misc";
 import { camposIncompletos, getCommonError } from "../utils/utils";
 import { asignarGananciasSesion } from "../services/Ganancias.services";
 import { aws_bucket_name } from "../config/config";
@@ -409,30 +409,33 @@ export const recoger_firma = async (req, res) => {
     }
 }
 
-export const get_firma = async (req, res) => {
-    const { id_grupo_actual } = req;
-    const { Socio_id, Sesion_id } = req.params;
-
+export const get_firma = async (req: SocioRequest<any>, res) => {
+    const { id_socio_actual } = req;
+    const { Sesion_id,Grupo_id } = req.params;
+    let query2 = "SELECT Fecha FROM sesiones WHERE Sesion_id = ?";
+    const [fecha] = await db.query(query2, Sesion_id);
     try {
         // Verificar que el socio existe
-        const socio = await existe_socio(Socio_id);
+        const socio = await existe_socio(id_socio_actual);
         // Verificar que el socio pertenezca al grupo
-        await socio_en_grupo(socio.Socio_id, id_grupo_actual!);
-
+        await socio_en_grupo(socio.Socio_id, Grupo_id!);
         const params: any = {
             Bucket: aws_bucket_name,
-            Key: `firmas/${Sesion_id}/${Socio_id}.png`,
+            Key: `firmas/${Sesion_id}/${id_socio_actual}.png`,
         }
 
         const data = await s3.getObject(params).promise();
-        console.log(data);
-        console.log(data.Body?.toString());
+        // console.log(data);
+        // console.log(data.Body?.toString());
+        //Devolver la Fecha
+       
 
-        return res.json({ code: 200, message: 'Firma obtenida', data: data.Body?.toString() }).status(200);
-    } catch (error) {
+        return res.json({ fecha:fecha[0].Fecha, data: data.Body?.toString(),code:200 }).status(200);
+    } catch (error: unknown) {
+        
         const { code, message } = getCommonError(error);
-        return res.json({ code, message }).status(code);
-    }
+        return res.json({ code, fecha:fecha[0].Fecha }).status(code);
+    } 
 }
 
 // Resumen de sesion:
