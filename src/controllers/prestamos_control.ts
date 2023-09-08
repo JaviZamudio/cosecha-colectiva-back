@@ -252,6 +252,8 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         const [prestamos] = await db.query(query, [Socio_id, Grupo_id]);
 
         for (var i = 0; i < Object.keys(prestamos).length; i++) {
+            prestamos[i].Adeudo_interes = redondearA(prestamos[i].Adeudo_interes);
+            prestamos[i].Adeudo_prestamo = redondearA(prestamos[i].Adeudo_prestamo);
             if (prestamos[i].Sesiones_restantes < 0){
                 prestamos[i].Sesiones_restantes= -1;
             }
@@ -267,6 +269,20 @@ export const get_prestamos_nopagados_socio = async (req: AdminRequest<Grupo>, re
         return res.status(code).json({ code, message });
     }
 }
+
+function redondearA(value: any) {
+    const parteDecimal = value - Math.floor(value);
+
+  if (parteDecimal < 0.24) {
+    return Math.floor(value); // Redondear hacia abajo
+  } else if (parteDecimal >= 0.24 && parteDecimal <= 0.50) {
+    return Math.floor(value) + 0.25; // Redondear a 0.25
+  } else if (parteDecimal > 0.50 && parteDecimal < 0.75) {
+    return Math.floor(value) + 0.50; // Redondear a 0.50
+  } else {
+    return Math.ceil(value); // Redondear hacia arriba
+  }
+  }
 
 export const get_prestamos_nopagados = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = Number(req.id_grupo_actual);
@@ -432,8 +448,8 @@ export const info_prestamos_socio = async (req: AdminRequest<any>, res) => {
 
         const Prestamos_vigentes = await obtenerPrestamosVigentes(Grupo_id, Socio_id);
 
-        const Limite_credito = await obtenerLimiteCreditoDisponible(Socio_id, Grupo_id);
-
+        let Limite_credito = await obtenerLimiteCreditoDisponible(Socio_id, Grupo_id);
+        Limite_credito = redondearA(Limite_credito)
         const socio = await existeSocio(Socio_id);
 
         const data = {

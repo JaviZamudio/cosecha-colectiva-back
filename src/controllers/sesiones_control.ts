@@ -280,7 +280,8 @@ export const get_conteo_dinero = async (req, res) => {
         return res.json({ code: 400, message: 'Campos incompletos' }).status(400);
     }
     try {
-        const sesion = await obtenerSesionActual(Grupo_id);
+        let sesion = await obtenerSesionActual(Grupo_id);
+        sesion.Caja = redondearA(sesion.Caja);
         return res.json({ code: 200, data: sesion.Caja, }).status(200);
         //preguntar si el status al final funciona o tiene que ser al principio
     } catch (error) {
@@ -288,6 +289,20 @@ export const get_conteo_dinero = async (req, res) => {
         return res.json({ code, message }).status(code);
     }
 }
+
+function redondearA(value: any) {
+    const parteDecimal = value - Math.floor(value);
+
+  if (parteDecimal < 0.24) {
+    return Math.floor(value); // Redondear hacia abajo
+  } else if (parteDecimal >= 0.24 && parteDecimal <= 0.50) {
+    return Math.floor(value) + 0.25; // Redondear a 0.25
+  } else if (parteDecimal > 0.50 && parteDecimal < 0.75) {
+    return Math.floor(value) + 0.50; // Redondear a 0.50
+  } else {
+    return Math.ceil(value); // Redondear hacia arriba
+  }
+  }
 
 export const get_sesiones_grupo = async (req: AdminRequest<Grupo>, res) => {
     const Grupo_id = req.id_grupo_actual;
