@@ -149,10 +149,12 @@ export const agregar_interes_prestamo = async (Grupo_id: number) => {
         //intereses normales --- Tasa_interes --- %
         const query = "SELECT Prestamo_id, (prestamos.Monto_prestamo*acuerdos.Tasa_interes)/100 as interesGenerado FROM prestamos INNER JOIN sesiones ON prestamos.Sesion_id = sesiones.Sesion_id INNER JOIN socios ON prestamos.Socio_id = socios.Socio_id INNER JOIN acuerdos ON prestamos.Acuerdos_id = Acuerdos.Acuerdo_id WHERE sesiones.Grupo_id = ? AND prestamos.Estatus_prestamo = 0 AND prestamos.Estatus_ampliacion = 0 AND prestamos.Sesiones_restantes >= 0 AND prestamos.Prestamo_original_id IS NULL AND socios.`Status` = 1;";
         let uno = (await db.query(query, [Grupo_id]))[0];
+        
         console.log(uno);
         await Promise.all(JSON.parse(JSON.stringify(uno)).map(async (prestamo) => {
             let ins1 = "INSERT INTO interes_prestamo (Prestamo_id, Sesion_id, Monto_interes, Tipo_interes) VALUES (?, ?, ?, ?)";
-            let res = await db.query(ins1, [prestamo.Prestamo_id, sesion.Sesion_id, prestamo.interesGenerado, 0])[0];
+            let prestamoRounded = (Math.round(prestamo.interesGenerado*2)) /2
+            let res = await db.query(ins1, [prestamo.Prestamo_id, sesion.Sesion_id, prestamoRounded, 0])[0];
             return res;
         }));
 
